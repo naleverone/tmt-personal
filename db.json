@@ -1,0 +1,326 @@
+{
+    "users": [
+      {
+        "id": 1,
+        "name": "Nicolas Leverone",
+        "email": "nicolas@example.com",
+        "store": "Vitacura",
+        "role": "admin",
+        "auth_id": "auth1"
+      },
+      {
+        "id": 2,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "store": "Las Condes",
+        "role": "employee",
+        "auth_id": "auth2"
+      },
+      {
+        "id": 3,
+        "name": "Jane Smith",
+        "email": "jane@example.com",
+        "store": "Vitacura",
+        "role": "admin",
+        "auth_id": "auth3"
+      },
+      {
+        "id": 4,
+        "name": "Carlos Ruiz",
+        "email": "carlos@example.com",
+        "store": "Providencia",
+        "role": "employee",
+        "auth_id": "auth4"
+      },
+      {
+        "id": 5,
+        "name": "Ana Gomez",
+        "email": "ana@example.com",
+        "store": "Costanera Center",
+        "role": "supervisor",
+        "auth_id": "auth5"
+      },
+      {
+        "id": 6,
+        "name": "Pedro Pascal",
+        "email": "pedro@example.com",
+        "store": "Costanera Center",
+        "role": "employee",
+        "auth_id": "auth6"
+      }
+    ],
+    "tasks": [
+      {
+        "id": 101,
+        "name": "Limpieza profunda de probadores",
+        "description": "Asegurar que todos los probadores estén impecables: espejos, ganchos, piso y sin artículos olvidados.",
+        "stores": ["Vitacura"],
+        "assigned_user_auth_id": "auth1",
+        "dueDate": "2025-05-15",
+        "priority": "High",
+        "status": "Pending",
+        "taskType": "Limpieza",
+        "evidenceImageUrl": null
+      },
+      {
+        "id": 102,
+        "name": "Actualizar escaparate principal - Campaña Invierno",
+        "description": "Implementar el nuevo diseño de escaparate según el manual de VM para la campaña de Invierno. Verificar iluminación.",
+        "stores": ["Las Condes"],
+        "assigned_user_auth_id": "auth2",
+        "dueDate": "2025-05-12",
+        "priority": "High",
+        "status": "In Progress",
+        "taskType": "Visual Merchandising",
+        "evidenceImageUrl": null
+      },
+      {
+        "id": 103,
+        "name": "Revisión y orden de bodega semanal",
+        "description": "Organizar la bodega, verificar niveles de stock de insumos básicos (bolsas, etiquetas) y reportar necesidades.",
+        "stores": ["Vitacura"],
+        "assigned_user_auth_id": "auth3",
+        "dueDate": "2025-05-10",
+        "priority": "Medium",
+        "status": "Completed",
+        "taskType": "Operaciones",
+        "evidenceImageUrl": "https://placehold.co/300x200/22c55e/white?text=Bodega+OK"
+      },
+      {
+        "id": 104,
+        "name": "Checklist Apertura Tienda",
+        "description": "Realizar todas las tareas del checklist de apertura: luces, música, caja, limpieza general.",
+        "stores": ["Providencia"],
+        "assigned_user_auth_id": "auth4",
+        "dueDate": "2025-05-09",
+        "priority": "High",
+        "status": "Pending",
+        "taskType": "Apertura",
+        "evidenceImageUrl": null
+      },
+      {
+        "id": 105,
+        "name": "Capacitación nuevo sistema POS al personal",
+        "description": "Entrenar a todo el personal de la tienda en el uso del nuevo sistema POS, enfocándose en devoluciones y notas de crédito.",
+        "stores": ["Costanera Center"],
+        "assigned_user_auth_id": "auth5",
+        "dueDate": "2025-05-20",
+        "priority": "Medium",
+        "status": "Pending",
+        "taskType": "Capacitación",
+        "evidenceImageUrl": null
+      },
+      {
+        "id": 106,
+        "name": "Pedido de insumos de limpieza",
+        "description": "Realizar el pedido mensual de insumos de limpieza según el presupuesto asignado.",
+        "stores": ["Vitacura"],
+        "assigned_user_auth_id": "auth1",
+        "dueDate": "2025-05-18",
+        "priority": "Low",
+        "status": "Pending",
+        "taskType": "Compras",
+        "evidenceImageUrl": null
+      },
+      {
+        "id": 107,
+        "name": "Verificar funcionamiento de alarmas de seguridad",
+        "description": "Probar todas las alarmas de seguridad de las prendas y de la tienda.",
+        "stores": ["Costanera Center"],
+        "assigned_user_auth_id": "auth6",
+        "dueDate": "2025-05-11",
+        "priority": "High",
+        "status": "In Progress",
+        "taskType": "Mantenimiento",
+        "evidenceImageUrl": null
+      },
+      {
+        "id": 108,
+        "name": "Checklist Cierre Tienda",
+        "description": "Realizar todas las tareas del checklist de cierre: arqueo de caja, apagar equipos, asegurar puertas.",
+        "stores": ["Las Condes"],
+        "assigned_user_auth_id": "auth2",
+        "dueDate": "2025-05-09",
+        "priority": "High",
+        "status": "Completed",
+        "taskType": "Cierre",
+        "evidenceImageUrl": "https://placehold.co/300x200/10b981/white?text=Cierre+OK"
+      }
+    ],
+    "task_evidence": [
+      {
+        "id": 1,
+        "task_id": 103,
+        "url": "https://placehold.co/300x200/22c55e/white?text=Bodega+OK",
+        "uploaded_by_auth_id": "auth3",
+        "created_at": "2025-05-10T10:00:00Z"
+      },
+      {
+        "id": 2,
+        "task_id": 108,
+        "url": "https://placehold.co/300x200/10b981/white?text=Cierre+OK",
+        "uploaded_by_auth_id": "auth2",
+        "created_at": "2025-05-09T14:00:00Z"
+      }
+    ],
+    "stores": [
+      {
+        "id": 1,
+        "name": "Mall Plaza Antofagasta",
+        "external_id": 1,
+        "street_name": "Avenida Balmaceda",
+        "street_number": "2355",
+        "additional_info": "Local 102b-104, Nivel 1",
+        "city": "Antofagasta",
+        "state": "Antofagasta"
+      },
+      {
+        "id": 2,
+        "name": "Mall Plaza La Serena",
+        "external_id": 2,
+        "street_name": "Avenida Alberto Solari",
+        "street_number": "1400",
+        "additional_info": "Local BE 117 Nivel 1",
+        "city": "La Serena",
+        "state": "Coquimbo"
+      },
+      {
+        "id": 3,
+        "name": "Mall Marina Boulevard",
+        "external_id": 3,
+        "street_name": "14 Norte",
+        "street_number": "821",
+        "additional_info": "Local 10, Nivel 1",
+        "city": "Viña Del Mar",
+        "state": "Valparaíso"
+      },
+      {
+        "id": 4,
+        "name": "Avenida Vitacura",
+        "external_id": 4,
+        "street_name": "Avenida Vitacura",
+        "street_number": "3634",
+        "city": "Santiago",
+        "state": "RM (Metropolitana)"
+      },
+      {
+        "id": 5,
+        "name": "Costanera Center",
+        "external_id": 5,
+        "street_name": "Avenida Andres Bello",
+        "street_number": "2425",
+        "additional_info": "Local 4141, piso 4",
+        "city": "Santiago",
+        "state": "RM (Metropolitana)"
+      },
+      {
+        "id": 6,
+        "name": "Laguna Piedra Roja Chicureo",
+        "external_id": 6,
+        "street_name": "P.Colina Sur",
+        "street_number": "14600",
+        "additional_info": "9340000",
+        "city": "Santiago",
+        "state": "RM (Metropolitana)"
+      },
+      {
+        "id": 7,
+        "name": "Parque Arauco",
+        "external_id": 7,
+        "street_name": "Avenida Presidente Kennedy",
+        "street_number": "5413",
+        "additional_info": "Local 283 A",
+        "city": "Santiago",
+        "state": "RM (Metropolitana)"
+      },
+      {
+        "id": 8,
+        "name": "Pichilemu Centro Comercail Altomar",
+        "external_id": 8,
+        "street_name": "Avenida Comercio",
+        "street_number": "2241",
+        "additional_info": "Local 12",
+        "city": "Pichilemu",
+        "state": "Libertador B. O'Higgins"
+      },
+      {
+        "id": 9,
+        "name": "Mall Plaza Maule",
+        "external_id": 9,
+        "street_name": "Avenida Circunvalacion Ote.",
+        "street_number": "1055",
+        "additional_info": "Local 110, Nivel 1",
+        "city": "Talca",
+        "state": "Maule"
+      },
+      {
+        "id": 10,
+        "name": "Mall Arauco Chillan",
+        "external_id": 10,
+        "street_name": "El Roble",
+        "street_number": "770",
+        "additional_info": "Local S321A, Piso 4",
+        "city": "Chillán",
+        "state": "Ñuble"
+      },
+      {
+        "id": 11,
+        "name": "Mall Plaza Concepción",
+        "external_id": 11,
+        "street_name": "Avenida Jorge Alessandri",
+        "street_number": "3177",
+        "additional_info": "Local A118A/A120",
+        "city": "Talcahuano",
+        "state": "Biobío"
+      },
+      {
+        "id": 12,
+        "name": "Pucon",
+        "external_id": 12,
+        "street_name": "Avenida Bernardo O'Higgins",
+        "street_number": "278",
+        "city": "Pucon",
+        "state": "La Araucanía"
+      },
+      {
+        "id": 13,
+        "name": "Mall Cenco Osorno",
+        "external_id": 13,
+        "street_name": "Plaza Yungay",
+        "street_number": "609",
+        "additional_info": "Local 2045, Nivel 2",
+        "city": "Osorno",
+        "state": "Los Lagos"
+      },
+      {
+        "id": 14,
+        "name": "Centro Comercial Licarayen",
+        "external_id": 14,
+        "street_name": "Walker Martinez",
+        "street_number": "121",
+        "additional_info": "Local 8",
+        "city": "Puerto Varas",
+        "state": "Los Lagos"
+      },
+      {
+        "id": 15,
+        "name": "Mall Paseo Costanera Puerto Montt",
+        "external_id": 15,
+        "street_name": "Illapel",
+        "street_number": "10",
+        "additional_info": "Piso 4",
+        "city": "Puerto Montt",
+        "state": "Los Lagos"
+      },
+      {
+        "id": 16,
+        "name": "Coyhaique",
+        "external_id": 16,
+        "street_name": "Horn",
+        "street_number": "47",
+        "additional_info": "Local D",
+        "city": "Coyhaique",
+        "state": "Aysén"
+      }
+    ]
+}
