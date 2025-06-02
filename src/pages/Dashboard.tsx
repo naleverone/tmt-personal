@@ -65,9 +65,8 @@ function Dashboard() {
   // Prepare data for non-admin users
   const prepareUserTasksData = () => {
     const statusCounts = {
-      'Pending': 0,
-      'In Progress': 0,
-      'Completed': 0
+      'Pendiente': 0,
+      'OK': 0,
     };
 
     tasks.forEach(task => {
@@ -84,13 +83,11 @@ function Dashboard() {
           label: 'Number of Tasks',
           data: Object.values(statusCounts),
           backgroundColor: [
-            'rgba(255, 159, 64, 0.7)',  // Orange for Pending
-            'rgba(54, 162, 235, 0.7)',   // Blue for In Progress
-            'rgba(75, 192, 192, 0.7)',   // Teal for Completed
+            'rgba(255, 159, 64, 0.7)',  // Orange for Pendiente
+            'rgba(75, 192, 192, 0.7)',   // Teal for OK
           ],
           borderColor: [
             'rgb(255, 159, 64)',
-            'rgb(54, 162, 235)',
             'rgb(75, 192, 192)',
           ],
           borderWidth: 1,
@@ -109,9 +106,8 @@ function Dashboard() {
       task.stores.forEach(store => {
         if (!storeStatusCounts[store]) {
           storeStatusCounts[store] = {
-            'Pending': 0,
-            'In Progress': 0,
-            'Completed': 0
+            'Pendiente': 0,
+            'OK': 0
           };
         }
 
@@ -121,7 +117,7 @@ function Dashboard() {
     });
 
     const stores = Object.keys(storeStatusCounts);
-    const statuses = ['Pending', 'In Progress', 'Completed'];
+    const statuses = ['Pendiente', 'OK'];
 
     return {
       labels: stores,
@@ -129,13 +125,11 @@ function Dashboard() {
         label: status,
         data: stores.map(store => storeStatusCounts[store][status]),
         backgroundColor: [
-          'rgba(255, 159, 64, 0.7)',  // Orange for Pending
-          'rgba(54, 162, 235, 0.7)',   // Blue for In Progress
-          'rgba(75, 192, 192, 0.7)',   // Teal for Completed
+          'rgba(255, 159, 64, 0.7)',  // Orange for Pendiente
+          'rgba(75, 192, 192, 0.7)',   // Teal for OK
         ][index],
         borderColor: [
           'rgb(255, 159, 64)',
-          'rgb(54, 162, 235)',
           'rgb(75, 192, 192)',
         ][index],
         borderWidth: 1,
@@ -187,15 +181,15 @@ function Dashboard() {
           <p className="text-3xl font-bold text-indigo-600">{tasks.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-2">Pending Tasks</h3>
+          <h3 className="text-lg font-semibold mb-2">Tareas Pendientes</h3>
           <p className="text-3xl font-bold text-orange-500">
-            {tasks.filter(t => t.status === 'Pending').length}
+            {tasks.filter(t => t.status === 'Pendiente').length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-2">Completed Tasks</h3>
+          <h3 className="text-lg font-semibold mb-2">Tareas OK</h3>
           <p className="text-3xl font-bold text-teal-500">
-            {tasks.filter(t => t.status === 'Completed').length}
+            {tasks.filter(t => t.status === 'OK').length}
           </p>
         </div>
       </div>
@@ -204,3 +198,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

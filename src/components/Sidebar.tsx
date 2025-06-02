@@ -40,7 +40,7 @@ function Sidebar() {
             }`}
           >
             <CheckSquare className="h-5 w-5 mr-3" />
-            My Tasks
+            Mis tareas
           </Link>
           {(userRole === 'supervisor' || userRole === 'admin') && (
             <Link
@@ -50,7 +50,7 @@ function Sidebar() {
               }`}
             >
               <ClipboardList className="h-5 w-5 mr-3" />
-              Store Overview
+              Vista de supervisor
             </Link>
           )}
           {(userRole === 'supervisor' || userRole === 'admin') && (
@@ -61,7 +61,7 @@ function Sidebar() {
               }`}
             >
               <PlusCircle className="h-5 w-5 mr-3" />
-              Create Task
+              Creación
             </Link>
           )}
           {userRole === 'admin' && (

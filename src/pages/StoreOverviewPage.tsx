@@ -75,18 +75,26 @@ function StoreOverviewPage() {
 
   const getPriorityClass = (priority?: string) => { 
     switch (priority?.toLowerCase()) {
-        case 'high': return 'bg-red-100 text-red-700';
-        case 'medium': return 'bg-yellow-100 text-yellow-700';
-        case 'low': return 'bg-green-100 text-green-700';
-        default: return 'bg-gray-100 text-gray-700';
+        case 'urgente':
+        case 'high': // compatibilidad
+            return 'bg-red-100 text-red-700';
+        case 'rutinaria':
+        case 'medium': // compatibilidad
+            return 'bg-yellow-100 text-yellow-700';
+        case 'low':
+            return 'bg-green-100 text-green-700';
+        default:
+            return 'bg-gray-100 text-gray-700';
     }
   };
   const getStatusClass = (status?: string) => { 
     switch (status?.toLowerCase().replace(' ','')) {
-        case 'pending': return 'bg-orange-100 text-orange-700';
-        case 'inprogress': return 'bg-blue-100 text-blue-700';
-        case 'completed': return 'bg-teal-100 text-teal-700';
-        default: return 'bg-gray-100 text-gray-700';
+        case 'pendiente':
+            return 'bg-orange-100 text-orange-700';
+        case 'ok':
+            return 'bg-teal-100 text-teal-700';
+        default:
+            return 'bg-gray-100 text-gray-700';
     }
   };
   
@@ -103,11 +111,11 @@ function StoreOverviewPage() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-2 sm:mb-0">
-            Vista General de Tareas
+            Vista de Tienda
         </h1>
       </div>
       <p className="text-gray-600 mb-6 text-sm">
-        {currentUser.role === 'admin' ? 'Visualizando tareas (Admin)' : `Tienda: ${currentUser.store} (Supervisor)`}
+        {currentUser.role === 'admin' ? 'Visualizando tareas (Administración)' : `Tienda: ${currentUser.store} (Supervisor)`}
       </p>
 
       <div className="mb-6 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
@@ -136,9 +144,8 @@ function StoreOverviewPage() {
                 className="block w-full p-3 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-700 bg-gray-50 hover:bg-gray-100"
             >
                 <option value="all">Todos</option>
-                <option value="Pending">Pendiente</option>
-                <option value="In Progress">En Progreso</option>
-                <option value="Completed">Completada</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="OK">OK</option>
             </select>
         </div>
         <div>
@@ -150,9 +157,8 @@ function StoreOverviewPage() {
                 className="block w-full p-3 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-700 bg-gray-50 hover:bg-gray-100"
             >
                 <option value="all">Todas</option>
-                <option value="High">Alta</option>
-                <option value="Medium">Media</option>
-                <option value="Low">Baja</option>
+                <option value="Urgente">Urgente</option>
+                <option value="Rutinaria">Rutinaria</option>
             </select>
         </div>
         <div>
@@ -199,7 +205,7 @@ function StoreOverviewPage() {
                   </td>
                 )}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{task.assignedUserName || 'N/A'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{task.dueDate || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{task.due_date || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-3 py-1 text-xs leading-5 font-semibold rounded-full ${getPriorityClass(task.priority)}`}>
                     {task.priority || 'N/A'}

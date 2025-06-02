@@ -91,7 +91,7 @@ function UsersPanel() {
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded"
           onClick={() => setIsAddUserOpen(true)}
         >
-          + Agregar Usuario
+          Agregar Usuario
         </button>
       </div>
       <div className="bg-white rounded-lg shadow overflow-x-auto">

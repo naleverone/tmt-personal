@@ -40,17 +40,17 @@ export interface Task {
     /**
      * @deprecated Use `assigned_user_auth_id` instead.
      */
-    assignedUserId?: number;
-    assignedUserName?: string;
+    assigned_user_id?: number;
+    assigned_user_name?: string;
     /** Primary identifier of the assigned user (Supabase Auth ID) */
     assigned_user_auth_id?: string;
-    dueDate?: string;
-    priority?: 'High' | 'Medium' | 'Low' | string;
-    status?: 'Pending' | 'In Progress' | 'Completed' | string;
-    taskType?: string;
-    evidenceImageUrl?: string | null;
-    isRecurring?: boolean;
-    recurrencePattern?: RecurrencePattern;
+    due_date?: string;
+    priority?: 'Urgente' | 'Rutinaria' | string;
+    status?: 'Pendiente' | 'OK' | string;
+    task_type?: string;
+    evidence_image_url?: string | null;
+    is_recurring?: boolean;
+    recurrence_pattern?: RecurrencePattern;
 }
 
 export interface TaskEvidence {

@@ -57,8 +57,8 @@
         "stores": ["Vitacura"],
         "assigned_user_auth_id": "auth1",
         "dueDate": "2025-05-15",
-        "priority": "High",
-        "status": "Pending",
+        "priority": "Urgente",
+        "status": "Pendiente",
         "taskType": "Limpieza",
         "evidenceImageUrl": null
       },
@@ -69,8 +69,8 @@
         "stores": ["Las Condes"],
         "assigned_user_auth_id": "auth2",
         "dueDate": "2025-05-12",
-        "priority": "High",
-        "status": "In Progress",
+        "priority": "Urgente",
+        "status": "Pendiente",
         "taskType": "Visual Merchandising",
         "evidenceImageUrl": null
       },
@@ -81,8 +81,8 @@
         "stores": ["Vitacura"],
         "assigned_user_auth_id": "auth3",
         "dueDate": "2025-05-10",
-        "priority": "Medium",
-        "status": "Completed",
+        "priority": "Rutinaria",
+        "status": "OK",
         "taskType": "Operaciones",
         "evidenceImageUrl": "https://placehold.co/300x200/22c55e/white?text=Bodega+OK"
       },
@@ -93,8 +93,8 @@
         "stores": ["Providencia"],
         "assigned_user_auth_id": "auth4",
         "dueDate": "2025-05-09",
-        "priority": "High",
-        "status": "Pending",
+        "priority": "Urgente",
+        "status": "Pendiente",
         "taskType": "Apertura",
         "evidenceImageUrl": null
       },
@@ -105,8 +105,8 @@
         "stores": ["Costanera Center"],
         "assigned_user_auth_id": "auth5",
         "dueDate": "2025-05-20",
-        "priority": "Medium",
-        "status": "Pending",
+        "priority": "Rutinaria",
+        "status": "Pendiente",
         "taskType": "Capacitación",
         "evidenceImageUrl": null
       },
@@ -117,8 +117,8 @@
         "stores": ["Vitacura"],
         "assigned_user_auth_id": "auth1",
         "dueDate": "2025-05-18",
-        "priority": "Low",
-        "status": "Pending",
+        "priority": "Rutinaria",
+        "status": "Pendiente",
         "taskType": "Compras",
         "evidenceImageUrl": null
       },
@@ -129,8 +129,8 @@
         "stores": ["Costanera Center"],
         "assigned_user_auth_id": "auth6",
         "dueDate": "2025-05-11",
-        "priority": "High",
-        "status": "In Progress",
+        "priority": "Urgente",
+        "status": "Pendiente",
         "taskType": "Mantenimiento",
         "evidenceImageUrl": null
       },
@@ -141,8 +141,8 @@
         "stores": ["Las Condes"],
         "assigned_user_auth_id": "auth2",
         "dueDate": "2025-05-09",
-        "priority": "High",
-        "status": "Completed",
+        "priority": "Urgente",
+        "status": "OK",
         "taskType": "Cierre",
         "evidenceImageUrl": "https://placehold.co/300x200/10b981/white?text=Cierre+OK"
       }

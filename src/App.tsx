@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import supabase from './config/supabaseClient';
 
 // Import components
 import Sidebar from './components/Sidebar';
@@ -30,25 +31,34 @@ function App() {
     }
   }, [isLoading, currentUser]);
 
-  // Detectar cuando el usuario vuelve a la pestaña y refrescar sesión de Supabase
+  // Refrescar la sesión cuando la ventana gana foco o la pestaña se vuelve visible
   React.useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[App] Tab visible, refrescando sesión de Supabase...');
-        try {
-          const { data: { session } } = await import('./config/supabaseClient').then(m => m.default.auth.getSession());
-          console.log('[App] getSession() result after tab visible:', session);
-          if (!session) {
-            setSessionExpired(true);
-          }
-        } catch (e) {
-          console.error('[App] Error al refrescar sesión tras volver a la pestaña:', e);
+    const refreshSession = async () => {
+      console.log('[App] Refrescando sesión de Supabase...');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[App] getSession() result:', session);
+        if (!session) {
           setSessionExpired(true);
         }
+      } catch (e) {
+        console.error('[App] Error al refrescar sesión:', e);
+        setSessionExpired(true);
       }
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSession();
+      }
+    };
+
+    window.addEventListener('focus', refreshSession);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', refreshSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Show loading spinner while checking auth state
