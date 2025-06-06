@@ -17,7 +17,7 @@ function StoreOverviewPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [assignedUserFilter, setAssignedUserFilter] = useState('all'); 
-  const [storeFilter, setStoreFilter] = useState(currentUser?.role === 'supervisor' ? currentUser.store : 'all'); 
+  const [storeFilter, setStoreFilter] = useState(currentUser?.role === 'supervisor' ? currentUser.store_id : 'all'); 
 
   useEffect(() => {
     if (!currentUser || (currentUser.role !== 'supervisor' && currentUser.role !== 'admin')) {
@@ -38,7 +38,7 @@ function StoreOverviewPage() {
         // Obtener tareas desde Supabase
         let tasksQuery = supabase.from('tasks').select('*');
         if (currentUser.role === 'supervisor') {
-          tasksQuery = tasksQuery.contains('stores', [currentUser.store]);
+          tasksQuery = tasksQuery.contains('stores', [currentUser.store_id]);
         } else if (currentUser.role === 'admin' && storeFilter !== 'all') {
           tasksQuery = tasksQuery.contains('stores', [storeFilter]);
         }
@@ -46,7 +46,7 @@ function StoreOverviewPage() {
         if (tasksError) throw new Error('Error al cargar tareas');
         const tasksWithUserNames = (tasksData || []).map(task => ({
           ...task,
-          assignedUserName: (users || []).find(u => u.auth_id === task.assigned_user_auth_id)?.name || 'Desconocido'
+          assigned_user_name: (users || []).find(u => u.auth_id === task.assigned_user_auth_id)?.name || 'Desconocido'
         }));
         setTasks(tasksWithUserNames);
       } catch (e) {
@@ -98,7 +98,7 @@ function StoreOverviewPage() {
     }
   };
   
-  const availableStoresForFilter = Array.from(new Set(users.map(u => u.store))).sort();
+  const availableStoresForFilter = Array.from(new Set(users.map(u => u.store_id))).sort();
   // Para el filtro de usuarios, es mejor mostrar todos los usuarios disponibles en las tareas actualmente cargadas (antes de filtrar por usuario)
   // o todos los usuarios de la tienda/s seleccionadas.
   // Esta versión es más simple y toma los usuarios de las tareas *antes* de aplicar el filtro de `assignedUserFilter`.
@@ -115,7 +115,7 @@ function StoreOverviewPage() {
         </h1>
       </div>
       <p className="text-gray-600 mb-6 text-sm">
-        {currentUser.role === 'admin' ? 'Visualizando tareas (Administración)' : `Tienda: ${currentUser.store} (Supervisor)`}
+        {currentUser.role === 'admin' ? 'Visualizando tareas (Administración)' : `Tienda: ${currentUser.store_id} (Supervisor)`}
       </p>
 
       <div className="mb-6 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
@@ -204,7 +204,7 @@ function StoreOverviewPage() {
                     {task.stores?.join(', ') || 'N/A'}
                   </td>
                 )}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{task.assignedUserName || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{task.assigned_user_name || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{task.due_date || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-3 py-1 text-xs leading-5 font-semibold rounded-full ${getPriorityClass(task.priority)}`}>

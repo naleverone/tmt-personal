@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import { User, Task, RecurrencePattern } from '../types';
 import supabase from '../config/supabaseClient';
 import { ClipboardList, Megaphone } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 function CreateTask() {
   const { currentUser } = useAuth();
@@ -28,7 +29,7 @@ function CreateTask() {
     name: '',
     description: '',
     assignedUserAuthId: '', // Cambiado de assignedUserId
-    stores: currentUser?.role === 'supervisor' ? [currentUser.store] : [],
+    stores: currentUser?.role === 'supervisor' ? [currentUser.store_id] : [],
     due_date: '',
     priority: 'Rutinaria',
     taskType: '',
@@ -41,13 +42,22 @@ function CreateTask() {
   });
 
   const [users, setUsers] = useState<User[]>([]);
-  const [stores, setStores] = useState<string[]>([]); // available store names
+  const [stores, setStores] = useState<{id: number, name: string}[]>([]); // available stores as objects
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'tasks' | 'announcements'>('tasks');
   const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
   const [overlayType, setOverlayType] = useState<'success' | 'error' | null>(null);
+
+  // Estado para el formulario de comunicados
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: '',
+    message: '',
+    targetStores: [] as number[], // store IDs
+    allStores: false,
+  });
 
   useEffect(() => {
     const fetchDataForForm = async () => {
@@ -58,14 +68,14 @@ function CreateTask() {
           .select('*');
         if (usersError) throw new Error('Failed to fetch users');
         setUsers(usersData || []);
-        const uniqueStores = Array.from(new Set((usersData || []).map(u => u.store))).sort();
-        setStores(uniqueStores);
-        if (currentUser?.role === 'admin' && uniqueStores.length > 0) {
-          // Optional: select first store by default for admin
-          // setFormData(prev => ({...prev, store: uniqueStores[0]}));
-        }
+        // Obtener tiendas desde Supabase
+        const { data: storesData, error: storesError } = await supabase
+          .from('stores')
+          .select('id, name');
+        if (storesError) throw new Error('Failed to fetch stores');
+        setStores(storesData || []);
       } catch {
-        setError('Error al cargar usuarios');
+        setError('Error al cargar usuarios o tiendas');
       }
     };
     fetchDataForForm();
@@ -107,9 +117,45 @@ function CreateTask() {
     });
   };
 
-  // Handler para seleccionar/deseleccionar todas
+  // Handler para seleccionar/deseleccionar todas las tiendas (Tareas)
   const handleSelectAllStores = (checked: boolean) => {
-    setFormData(prev => ({ ...prev, stores: checked ? stores : [] }));
+    setFormData(prev => ({ ...prev, stores: checked ? stores.map(s => s.name) : [] }));
+  };
+
+  // Handler para campos de texto
+  const handleAnnouncementChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setAnnouncementForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handler para seleccionar/deseleccionar todas las tiendas (Anuncios)
+  const handleAnnouncementSelectAll = (checked: boolean) => {
+    setAnnouncementForm(prev => ({
+      ...prev,
+      allStores: checked,
+      targetStores: checked ? stores.map(s => s.id) : [],
+    }));
+  };
+
+  // Handler para seleccionar tiendas individuales
+  const handleAnnouncementStoreCheckbox = (storeId: number) => {
+    setAnnouncementForm(prev => {
+      if (prev.targetStores.includes(storeId)) {
+        const newStores = prev.targetStores.filter(s => s !== storeId);
+        return {
+          ...prev,
+          targetStores: newStores,
+          allStores: newStores.length === stores.length,
+        };
+      } else {
+        const newStores = [...prev.targetStores, storeId];
+        return {
+          ...prev,
+          targetStores: newStores,
+          allStores: newStores.length === stores.length,
+        };
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,7 +242,7 @@ function CreateTask() {
   // Filtrar usuarios según tiendas seleccionadas
   const filteredUsers = formData.stores.length === 0
     ? users
-    : users.filter(u => formData.stores.includes(u.store));
+    : users.filter(u => formData.stores.includes(u.store_id));
 
   return (
     <div className="p-8">
@@ -234,10 +280,13 @@ function CreateTask() {
       )}
       {activeTab === 'announcements' && (
         <div>
-          <div className="flex flex-col items-center min-h-[200px] justify-center w-full text-center text-gray-500 text-lg">
-            <Megaphone className="w-10 h-10 mb-4 text-indigo-400" />
-            <span>Próximamente: sección de comunicados.</span>
-          </div>
+          <button
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded mb-6"
+            onClick={() => setShowAnnouncementModal(true)}
+          >
+            Crear Comunicado
+          </button>
+          {/* Aquí irá el modal de creación de comunicado */}
         </div>
       )}
       {showModal && !overlayMessage && (
@@ -298,15 +347,15 @@ function CreateTask() {
                       />
                       Seleccionar todas
                     </label>
-                    {stores.map(storeName => (
-                      <label key={storeName} className="flex items-center mb-1">
+                    {stores.map(store => (
+                      <label key={store.id} className="flex items-center mb-1">
                         <input
                           type="checkbox"
-                          checked={formData.stores.includes(storeName)}
-                          onChange={() => handleStoreCheckboxChange(storeName)}
+                          checked={formData.stores.includes(store.name)}
+                          onChange={() => handleStoreCheckboxChange(store.name)}
                           className="mr-2"
                         />
-                        {storeName}
+                        {store.name}
                       </label>
                     ))}
                   </div>
@@ -325,8 +374,8 @@ function CreateTask() {
                   >
                     <option value="">Sin asignar</option>
                     {filteredUsers.map((user) => (
-                      (currentUser?.role === 'admin' || user.store === currentUser?.store) &&
-                      <option key={user.id} value={user.auth_id}>{user.name} ({user.store})</option>
+                      (currentUser?.role === 'admin' || user.store_id === currentUser?.store_id) &&
+                      <option key={user.id} value={user.auth_id}>{user.name} ({user.store_id})</option>
                     ))}
                   </select>
                 </div>
@@ -522,22 +571,147 @@ function CreateTask() {
           </div>
         </div>
       )}
+      {showAnnouncementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white p-6 md:p-8 rounded-xl shadow-2xl max-w-2xl w-full relative">
+            <button
+              onClick={() => setShowAnnouncementModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Crear Comunicado</h2>
+            <form
+              className="space-y-6"
+              onSubmit={async e => {
+                e.preventDefault();
+                if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
+                  setOverlayType('error');
+                  setOverlayMessage('Completa el título y el mensaje.');
+                  return;
+                }
+                setShowAnnouncementModal(false);
+                try {
+                  const targetStoreIds = announcementForm.allStores ? null : announcementForm.targetStores;
+                  const { error } = await supabase.from('announcements').insert({
+                    id: uuidv4(),
+                    title: announcementForm.title,
+                    message: announcementForm.message,
+                    created_at: new Date().toISOString(),
+                    created_by: currentUser.id,
+                    target_store_ids: targetStoreIds,
+                  });
+                  if (error) throw error;
+                  setOverlayType('success');
+                  setOverlayMessage('¡Comunicado creado exitosamente!');
+                  setAnnouncementForm({ title: '', message: '', targetStores: [], allStores: false });
+                } catch (err) {
+                  setOverlayType('error');
+                  setOverlayMessage('Error al crear el comunicado.');
+                }
+              }}
+            >
+              <div>
+                <label htmlFor="announcement-title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Título del Comunicado *
+                </label>
+                <input
+                  type="text"
+                  id="announcement-title"
+                  name="title"
+                  required
+                  className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  value={announcementForm.title}
+                  onChange={handleAnnouncementChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="announcement-message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Mensaje *
+                </label>
+                <textarea
+                  id="announcement-message"
+                  name="message"
+                  rows={4}
+                  required
+                  className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  value={announcementForm.message}
+                  onChange={handleAnnouncementChange}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tiendas destinatarias *</label>
+                <div className="border rounded-md p-2 bg-gray-50 max-h-40 overflow-y-auto">
+                  <label className="flex items-center mb-2 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={announcementForm.allStores}
+                      onChange={e => handleAnnouncementSelectAll(e.target.checked)}
+                      className="mr-2"
+                    />
+                    Todas las tiendas
+                  </label>
+                  {stores.map(store => (
+                    <label key={store.id} className="flex items-center mb-1">
+                      <input
+                        type="checkbox"
+                        checked={announcementForm.targetStores.includes(store.id)}
+                        onChange={() => handleAnnouncementStoreCheckbox(store.id)}
+                        className="mr-2"
+                      />
+                      {store.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-5">
+                <div className="flex justify-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAnnouncementModal(false)}
+                    className="w-32 px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-32 px-6 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Crear
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {overlayMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className={`bg-white rounded-xl shadow-2xl px-10 py-8 flex flex-col items-center justify-center max-w-md w-full`} role="alert">
+          <div className="bg-white rounded-xl shadow-2xl px-10 py-8 flex flex-col items-center justify-center max-w-md w-full relative" role="alert">
+            <button
+              onClick={() => { setOverlayMessage(null); setOverlayType(null); }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
             {overlayType === 'success' && (
-              <svg className="w-12 h-12 mb-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="white" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2l4-4" />
-              </svg>
+              <div className="flex items-center text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m2 10a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm">{overlayMessage}</span>
+              </div>
             )}
             {overlayType === 'error' && (
-              <svg className="w-12 h-12 mb-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <div className="flex items-center text-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="text-sm">{overlayMessage}</span>
+              </div>
             )}
-            <p className="text-lg font-semibold mb-2">{overlayType === 'success' ? 'Éxito' : 'Error'}</p>
-            <p className="text-center text-gray-600">{overlayMessage}</p>
           </div>
         </div>
       )}

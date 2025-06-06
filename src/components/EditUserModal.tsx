@@ -14,14 +14,14 @@ interface EditUserModalProps {
 
 function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUserModalProps) {
   const [formData, setFormData] = useState<User | null>(null);
-  const [stores, setStores] = useState<{ name: string }[]>([]);
+  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStores = async () => {
       try {
-        const { data: storesData, error: storesError } = await supabase.from('stores').select('name');
+        const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name');
         if (storesError) throw new Error('Failed to fetch stores');
         setStores(storesData || []);
         setIsLoading(false);
@@ -119,16 +119,16 @@ function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUs
           </div>
           <div>
             <label htmlFor="store-modal" className="block text-sm font-medium text-gray-700">Tienda</label>
-            <select name="store" id="store-modal" value={formData.store} onChange={handleChange} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+            <select name="store_id" id="store-modal" value={formData?.store_id || ''} onChange={handleChange} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
               {stores.map(store => (
-                <option key={store.name} value={store.name}>{store.name}</option>
+                <option key={store.id} value={store.id}>{store.name}</option>
               ))}
             </select>
           </div>
           <div>
             <label htmlFor="role-modal" className="block text-sm font-medium text-gray-700">Rol</label>
             <select name="role" id="role-modal" value={formData.role} onChange={handleChange} className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-              {availableRoles.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+              {availableRoles.map(r => <option key={r} value={r}>{r === 'admin' ? 'Administrador' : r === 'supervisor' ? 'Supervisor' : r === 'employee' ? 'Vendedor' : r}</option>)}
             </select>
           </div>
         </div>

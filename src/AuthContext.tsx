@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import supabase from './config/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -7,14 +7,14 @@ interface AppUser {
   id: string;
   name: string;
   email: string;
-  store: string;
+  store_id: string; // uuid or number
   role: 'supervisor' | 'employee' | 'admin' | string;
 }
 
 interface AuthContextType {
   currentUser: AppUser | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, store_id: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -38,8 +38,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Load stored user on mount and setup auth listener
   useEffect(() => {
+    console.log('[AuthContext] useEffect mount');
     // Get initial session
     supabase.auth.getSession().then(async ({ data, error }) => {
+      console.log('[AuthContext] getSession() on mount:', { data, error });
       const session = data.session;
       if (error || !session?.user) {
         await handleInvalidSession();
@@ -53,10 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', { event, session });
-        if (event === 'TOKEN_REFRESH_FAILED') {
-          await handleInvalidSession();
-          return;
-        }
         try {
           if (session?.user) {
             await loadUserProfile(session.user);
@@ -71,14 +69,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       subscription.unsubscribe();
+      console.log('[AuthContext] Unsubscribed from onAuthStateChange');
     };
   }, []);
+
+  useEffect(() => {
+    console.log('[AuthContext] currentUser changed:', currentUser);
+  }, [currentUser]);
+
+  useEffect(() => {
+    console.log('[AuthContext] isLoading changed:', isLoading);
+  }, [isLoading]);
 
   const loadUserProfile = async (user: User) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('name, store, role')
+        .select('name, store_id, role')
         .eq('auth_id', user.id)
         .single();
 
@@ -88,17 +95,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: user.id,
         email: user.email || '',
         name: data.name,
-        store: data.store,
+        store_id: data.store_id, // store_id is now the store ID
         role: data.role,
       });
-  } catch (error) {
-    console.error('Error loading user profile:', error);
-    try {
-      await handleInvalidSession();
-    } catch (logoutError) {
-      console.error('Error logging out after failed profile load:', logoutError);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      try {
+        await handleInvalidSession();
+      } catch (logoutError) {
+        console.error('Error logging out after failed profile load:', logoutError);
+      }
     }
-  }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -128,7 +135,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (
     name: string,
     email: string,
-    password: string
+    password: string,
+    store_id: string // add store_id to registration
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -146,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           auth_id: userId,
           name,
           email,
-          store: '',
+          store_id: store_id,
           role: 'employee',
         },
       ]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../AuthContext';
 import EditUserModal from '../../components/EditUserModal';
 import AddUserModal from '../../components/AddUserModal';
@@ -7,6 +7,7 @@ import supabase from '../../config/supabaseClient';
 
 function UsersPanel() {
   const [usersData, setUsersData] = useState<User[]>([]);
+  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -22,22 +23,25 @@ function UsersPanel() {
       setUsersData([]);
       return;
     }
-    const fetchUsers = async () => {
+    const fetchUsersAndStores = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const { data, error: usersError } = await supabase.from('users').select('*');
+        const { data: usersData, error: usersError } = await supabase.from('users').select('*');
         if (usersError) throw new Error(usersError.message);
-        setUsersData(data || []);
+        setUsersData(usersData || []);
+        const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name');
+        if (storesError) throw new Error(storesError.message);
+        setStores(storesData || []);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Error desconocido";
-        setError(`Error cargando usuarios: ${msg}.`);
-        console.error("Error fetching users:", e);
+        setError(`Error cargando usuarios o tiendas: ${msg}.`);
+        console.error("Error fetching users or stores:", e);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchUsers();
+    fetchUsersAndStores();
   }, [currentUser]);
 
   const handleEditUser = (userToEdit: User) => {
@@ -98,11 +102,11 @@ function UsersPanel() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tienda</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -110,19 +114,19 @@ function UsersPanel() {
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.store}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stores.find(s => String(s.id) === String(user.store_id))?.name || 'Sin tienda'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     user.role === 'admin' ? 'bg-red-100 text-red-800' :
                     user.role === 'supervisor' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {user.role}
+                    {user.role === 'admin' ? 'Administrador' : user.role === 'supervisor' ? 'Supervisor' : 'Vendedor'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button onClick={() => handleEditUser(user)} className="text-indigo-600 hover:text-indigo-900">
-                    Edit
+                    Editar
                   </button>
                 </td>
               </tr>

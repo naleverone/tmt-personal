@@ -1,197 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-import { Task } from '../types';
 import supabase from '../config/supabaseClient';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { Megaphone } from 'lucide-react';
 
 function Dashboard() {
   const { currentUser } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [storeMap, setStoreMap] = useState<Record<number, string>>({});
+  const [storeName, setStoreName] = useState('');
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchAnnouncements = async () => {
       if (!currentUser) return;
-      try {
-        let query = supabase.from('tasks').select('*');
-        if (currentUser.role !== 'admin') {
-          query = query.eq('assigned_user_auth_id', currentUser.id);
-        }
-        const { data, error } = await query;
-        if (error) throw new Error('Error al obtener tareas');
-        setTasks(data || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error fetching tasks');
-      } finally {
-        setIsLoading(false);
+      // Fetch stores for mapping IDs to names
+      const { data: storesData } = await supabase.from('stores').select('id, name');
+      const storeMapObj: Record<number, string> = {};
+      (storesData || []).forEach((s: any) => { storeMapObj[s.id] = s.name; });
+      setStoreMap(storeMapObj);
+      let query = supabase
+        .from('announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      if (currentUser.role !== 'admin') {
+        // Mostrar solo comunicados globales o para la tienda del usuario (por ID)
+        query = query.or(`target_store_ids.is.null,target_store_ids.cs.{${currentUser.store_id}}`);
       }
+      const { data, error } = await query;
+      if (!error) setAnnouncements(data || []);
     };
+    fetchAnnouncements();
+  }, [currentUser]);
 
-    fetchTasks();
+  useEffect(() => {
+    const fetchStoreName = async () => {
+      if (!currentUser?.store_id) return;
+      const { data, error } = await supabase.from('stores').select('name').eq('id', currentUser.store_id).single();
+      if (!error && data) setStoreName(data.name);
+    };
+    fetchStoreName();
   }, [currentUser]);
 
   if (!currentUser) {
-    return <p className="p-8 text-center">Please log in.</p>;
+    return <p className="p-8 text-center">Por favor, inicia sesión.</p>;
   }
-
-  if (isLoading) {
-    return <div className="p-8 text-center">Loading dashboard data...</div>;
-  }
-
-  if (error) {
-    return <div className="p-8 text-center text-red-600">Error: {error}</div>;
-  }
-
-  // Prepare data for non-admin users
-  const prepareUserTasksData = () => {
-    const statusCounts = {
-      'Pendiente': 0,
-      'OK': 0,
-    };
-
-    tasks.forEach(task => {
-      if (task.status) {
-        statusCounts[task.status as keyof typeof statusCounts] = 
-          (statusCounts[task.status as keyof typeof statusCounts] || 0) + 1;
-      }
-    });
-
-    return {
-      labels: Object.keys(statusCounts),
-      datasets: [
-        {
-          label: 'Number of Tasks',
-          data: Object.values(statusCounts),
-          backgroundColor: [
-            'rgba(255, 159, 64, 0.7)',  // Orange for Pendiente
-            'rgba(75, 192, 192, 0.7)',   // Teal for OK
-          ],
-          borderColor: [
-            'rgb(255, 159, 64)',
-            'rgb(75, 192, 192)',
-          ],
-          borderWidth: 1,
-        },
-      ],
-    };
-  };
-
-  // Prepare data for admin users
-  const prepareAdminTasksData = () => {
-    const storeStatusCounts: Record<string, Record<string, number>> = {};
-
-    tasks.forEach(task => {
-      if (!task.stores || !task.status) return;
-
-      task.stores.forEach(store => {
-        if (!storeStatusCounts[store]) {
-          storeStatusCounts[store] = {
-            'Pendiente': 0,
-            'OK': 0
-          };
-        }
-
-        storeStatusCounts[store][task.status] =
-          (storeStatusCounts[store][task.status] || 0) + 1;
-      });
-    });
-
-    const stores = Object.keys(storeStatusCounts);
-    const statuses = ['Pendiente', 'OK'];
-
-    return {
-      labels: stores,
-      datasets: statuses.map((status, index) => ({
-        label: status,
-        data: stores.map(store => storeStatusCounts[store][status]),
-        backgroundColor: [
-          'rgba(255, 159, 64, 0.7)',  // Orange for Pendiente
-          'rgba(75, 192, 192, 0.7)',   // Teal for OK
-        ][index],
-        borderColor: [
-          'rgb(255, 159, 64)',
-          'rgb(75, 192, 192)',
-        ][index],
-        borderWidth: 1,
-      })),
-    };
-  };
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: currentUser.role === 'admin' ? 'Tasks by Store and Status' : 'Your Tasks by Status',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1
-        }
-      }
-    }
-  };
-
   return (
     <div className="p-8">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">Welcome, {currentUser.name}</h1>
-        <p className="text-gray-600">Store: {currentUser.store}</p>
-        <p className="text-gray-500 text-sm">Role: {currentUser.role}</p>
+        <h1 className="text-2xl font-bold mb-4">Bienvenido/a, {currentUser.name}</h1>
+        <p className="text-gray-600">Tienda: {storeName || currentUser.store_id}</p>
+        <p className="text-gray-500 text-sm">Rol: {currentUser.role === 'admin' ? 'Administrador' : currentUser.role === 'supervisor' ? 'Supervisor' : 'Vendedor'}</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-6 mt-8">
-        <div className="w-full h-[400px]">
-          <Bar 
-            options={options} 
-            data={currentUser.role === 'admin' ? prepareAdminTasksData() : prepareUserTasksData()} 
-          />
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-2">Total Tasks</h3>
-          <p className="text-3xl font-bold text-indigo-600">{tasks.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-2">Tareas Pendientes</h3>
-          <p className="text-3xl font-bold text-orange-500">
-            {tasks.filter(t => t.status === 'Pendiente').length}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-2">Tareas OK</h3>
-          <p className="text-3xl font-bold text-teal-500">
-            {tasks.filter(t => t.status === 'OK').length}
-          </p>
-        </div>
+      {/* Comunicados activos */}
+      <div className="max-w-3xl mx-auto">
+        {announcements.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-xl font-bold mb-4 flex items-center justify-center text-indigo-700">
+              <Megaphone className="w-7 h-7 mr-2 text-indigo-500" /> Comunicados Activos
+            </h2>
+            <div className="space-y-6">
+              {announcements.map(a => (
+                <div key={a.id} className="bg-gradient-to-r from-indigo-100 to-indigo-50 border-l-4 border-indigo-500 shadow-lg rounded-xl p-6 relative animate-fade-in">
+                  <div className="flex items-center mb-2">
+                    <Megaphone className="w-6 h-6 text-indigo-400 mr-2" />
+                    <span className="font-semibold text-lg text-indigo-800">{a.title}</span>
+                  </div>
+                  <p className="text-gray-700 mb-2 whitespace-pre-line">{a.message}</p>
+                  <div className="text-xs text-gray-500 flex justify-between items-center">
+                    <span>Publicado: {new Date(a.created_at).toLocaleString()}</span>
+                    <span>{!a.target_store_ids ? 'Todas las tiendas' : `Tiendas: ${a.target_store_ids.map((id: number) => storeMap[id] || id).join(', ')}`}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

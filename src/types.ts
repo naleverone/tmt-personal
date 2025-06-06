@@ -4,10 +4,12 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    store: string;
+    store_id: string; // uuid or number, depending on your DB
     role: 'supervisor' | 'employee' | 'admin' | string;
-    auth_id: string; // Nuevo: UUID de Supabase Auth
+    auth_id: string; // UUID de Supabase Auth
 }
+
+// Nota: El rol 'employee' se muestra como 'Vendedor' en la interfaz.
 
 export interface Store {
     id: number;

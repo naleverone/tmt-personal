@@ -17,7 +17,7 @@ function TaskList() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [assignedUserFilter, setAssignedUserFilter] = useState('all');
-  const [storeFilter, setStoreFilter] = useState(currentUser?.role === 'supervisor' ? currentUser.store : 'all');
+  const [storeFilter, setStoreFilter] = useState(currentUser?.role === 'supervisor' ? currentUser.store_id : 'all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isPendingOpen, setIsPendingOpen] = useState(true);
@@ -42,7 +42,7 @@ function TaskList() {
         if (currentUser.role === 'employee') {
           tasksQuery = tasksQuery.eq('assigned_user_auth_id', currentUser.id);
         } else if (currentUser.role === 'supervisor') {
-          tasksQuery = tasksQuery.contains('stores', [currentUser.store]);
+          tasksQuery = tasksQuery.contains('stores', [currentUser.store_id]);
         } else if (currentUser.role === 'admin' && storeFilter !== 'all') {
           tasksQuery = tasksQuery.contains('stores', [storeFilter]);
         }
@@ -292,21 +292,21 @@ function TaskList() {
 
   // Ajuste: Definir anchos fijos y consistentes para las columnas de la tabla
   const TABLE_COL_WIDTHS = {
-    info: 'w-12',
-    tarea: 'min-w-[180px] w-2/6',
-    tienda: 'min-w-[120px] w-1/6',
-    asignado: 'min-w-[120px] w-1/6',
-    vence: 'min-w-[110px] w-1/6',
-    prioridad: 'min-w-[100px] w-1/12',
-    estado: 'min-w-[100px] w-1/12',
-    acciones: 'w-16',
+    info: '',
+    tarea: 'w-1/4', // ancho proporcional
+    tienda: 'w-1/6',
+    asignado: 'w-1/6',
+    vence: 'w-1/12',
+    prioridad: 'w-1/12',
+    estado: 'w-1/12',
+    acciones: 'w-12',
   };
 
   const showStoreColumn = currentUser?.role === 'admin';
 
   // Renderiza tabla para un set de tareas
   const renderTasksTable = (tasksToShow: Task[]) => (
-    <table className="min-w-[700px] w-full table-auto divide-y divide-gray-200 text-sm sm:text-base">
+    <table className="w-full table-auto divide-y divide-gray-200 text-sm sm:text-base">
       <thead className="bg-gray-100">
         <tr>
           <th className={TABLE_COL_WIDTHS.info}></th>
@@ -342,12 +342,14 @@ function TaskList() {
                   {isOk ? <CheckCircle size={22} fill="none" strokeWidth={2} /> : <Circle size={22} strokeWidth={2} />}
                 </button>
               </td>
-              <td className={TABLE_COL_WIDTHS.tarea + " px-2 py-3 sm:px-6 sm:py-4 whitespace-nowrap align-middle"}>
-                <div className="text-sm font-medium text-gray-900 break-words">{task.name}</div>
-                <div className="text-xs text-gray-500 line-clamp-1 break-words">{task.description || "Sin descripción"}</div>
+              <td className={TABLE_COL_WIDTHS.tarea + " px-2 py-3 sm:px-6 sm:py-4 whitespace-nowrap align-middle truncate max-w-xs"}>
+                <div className="text-sm font-medium text-gray-900 truncate">{task.name}</div>
+                <div className="text-xs text-gray-500 line-clamp-1 truncate">{task.description || "Sin descripción"}</div>
               </td>
               {showStoreColumn && (
-                <td className={TABLE_COL_WIDTHS.tienda + " px-2 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-700 align-middle"}>{task.stores?.join(', ') || <span className="text-gray-300">-</span>}</td>
+                <td className={TABLE_COL_WIDTHS.tienda + " px-2 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-700 align-middle truncate max-w-xs"}>
+                  <span className="truncate">{task.stores?.join(', ') || <span className="text-gray-300">-</span>}</span>
+                </td>
               )}
               <td className={TABLE_COL_WIDTHS.asignado + " px-2 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-700 align-middle"}>{task.assigned_user_name ?? 'N/A'}</td>
               <td className={TABLE_COL_WIDTHS.vence + " px-2 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-700 align-middle"}>{task.due_date ?? 'N/A'}</td>
@@ -423,7 +425,7 @@ function TaskList() {
     if (currentUser?.role === 'admin') {
       setStoreFilter('all');
     } else if (currentUser?.role === 'supervisor') {
-      setStoreFilter(currentUser.store);
+      setStoreFilter(currentUser.store_id);
     }
   };
 

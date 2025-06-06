@@ -17,6 +17,7 @@ import AdminPanel from './pages/AdminPanel';
 import UsersPanel from './pages/admin/UsersPanel';
 import StoresPanel from './pages/admin/StoresPanel';
 import ProtectedRoute from './routes/ProtectedRoute';
+import AnnouncementsList from './pages/AnnouncementsList';
 
 function App() {
   const { currentUser, isLoading } = useAuth();
@@ -64,14 +65,43 @@ function App() {
   // Show loading spinner while checking auth state
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <>
+        <div className="flex justify-center items-center min-h-screen"></div>
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
-      </div>
+      </>
     );
   }
 
   // Ocultar mensaje de sesión expirada en login y register
   const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+
+  // Si no hay usuario y estamos en login o register, mostrar solo la página correspondiente
+  if (!currentUser && isAuthPage) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        {window.location.pathname === '/login' ? <LoginPage /> : <RegisterPage />}
+      </div>
+    );
+  }
+
+  // Si no hay usuario y no es login/register, mostrar login por defecto
+  if (!currentUser && !isAuthPage) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <LoginPage />
+      </div>
+    );
+  }
+
+  // Detectar si estamos en login o register
+  const isLoginPage = window.location.pathname === '/login';
+  const isRegisterPage = window.location.pathname === '/register';
+  if (isLoginPage) {
+    return <LoginPage />;
+  }
+  if (isRegisterPage) {
+    return <RegisterPage />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
@@ -137,6 +167,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <StoreOverviewPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/announcements" 
+            element={
+              <ProtectedRoute>
+                <AnnouncementsList />
               </ProtectedRoute>
             } 
           />

@@ -1,40 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
-import { useAuth } from '../AuthContext';
+import supabase from '../config/supabaseClient';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, isLoading, currentUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (currentUser) {
-      navigate('/');
-    }
-  }, [currentUser, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+    setIsLoading(true);
     if (!email || !password) {
       setError('Por favor, completa todos los campos.');
+      setIsLoading(false);
       return;
     }
-
     try {
-      await login(email, password);
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Invalid login credentials')) {
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginError) {
+        if (loginError.message.includes('Invalid login credentials')) {
           setError('Email o contraseña incorrectos.');
         } else {
           setError('Error al iniciar sesión. Por favor intenta nuevamente.');
         }
+        setIsLoading(false);
+        return;
       }
+      if (data.user) {
+        navigate('/'); // Dashboard
+      } else {
+        setError('No se pudo iniciar sesión.');
+      }
+    } catch (err) {
+      setError('Error al iniciar sesión.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

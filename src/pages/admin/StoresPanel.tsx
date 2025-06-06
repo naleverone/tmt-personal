@@ -77,7 +77,7 @@ function StoresPanel() {
     setEditingStore(prev => ({ ...prev, [name]: value }));
   };
 
-  if (isLoading) return <div className="text-center py-4">Loading stores...</div>;
+  if (isLoading) return <div className="text-center py-4">Cargando tiendas...</div>;
 
   return (
     <div>
@@ -141,16 +141,6 @@ function StoresPanel() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Info Adicional</label>
-                <input
-                  type="text"
-                  name="additional_info"
-                  value={editingStore.additional_info || ''}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-700">Ciudad</label>
                 <input
                   type="text"
@@ -170,6 +160,16 @@ function StoresPanel() {
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Info Adicional</label>
+                <input
+                  type="text"
+                  name="additional_info"
+                  value={editingStore.additional_info || ''}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
               <div className="flex justify-end space-x-3 pt-4">
@@ -200,43 +200,30 @@ function StoresPanel() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ciudad</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Info Adicional</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {stores.map((store) => (
+            {stores.length > 0 ? stores.map((store) => (
               <tr key={store.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {store.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {store.street_name} {store.street_number}
-                  {store.additional_info && <span className="text-xs text-gray-400 block">{store.additional_info}</span>}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {store.city}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {store.state}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => handleEdit(store)}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      <Edit2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(store.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{store.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{store.street_name} {store.street_number}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{store.city}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{store.state}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{store.additional_info}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button onClick={() => handleEdit(store)} className="text-indigo-600 hover:text-indigo-900 mr-2">Editar</button>
+                  <button onClick={() => handleDelete(store.id)} className="text-red-600 hover:text-red-900">Eliminar</button>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  No hay tiendas para mostrar.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

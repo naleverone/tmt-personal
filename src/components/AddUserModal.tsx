@@ -12,10 +12,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
     name: '',
     email: '',
     password: '',
-    store: '',
+    store_id: '',
     role: '', // Cambiado de 'employee' a '' para forzar selección
   });
-  const [stores, setStores] = useState<{ name: string }[]>([]);
+  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,12 +26,12 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
       name: '',
       email: '',
       password: '',
-      store: '',
+      store_id: '',
       role: '', // Cambiado de 'employee' a '' para forzar selección
     });
     // Cargar tiendas desde Supabase
     const fetchStores = async () => {
-      const { data, error } = await supabase.from('stores').select('name');
+      const { data, error } = await supabase.from('stores').select('id, name');
       if (!error) setStores(data || []);
     };
     fetchStores();
@@ -65,7 +65,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
           auth_id: userId,
           name: formData.name,
           email: formData.email,
-          store: formData.store,
+          store_id: formData.store_id,
           role: formData.role,
         }
       ]);
@@ -103,10 +103,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Tienda</label>
-            <select name="store" value={formData.store} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+            <select name="store_id" value={formData.store_id} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
               <option value="">Seleccionar tienda...</option>
               {stores.map(store => (
-                <option key={store.name} value={store.name}>{store.name}</option>
+                <option key={store.id} value={store.id}>{store.name}</option>
               ))}
             </select>
           </div>
@@ -116,7 +116,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
               <option value="">Seleccionar rol...</option>
               <option value="admin">Admin</option>
               <option value="supervisor">Supervisor</option>
-              <option value="employee">Empleado</option>
+              <option value="employee">Vendedor</option>
             </select>
           </div>
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}

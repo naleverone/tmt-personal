@@ -7,14 +7,4 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  server: {
-    // Ensure proper MIME types are set
-    middlewareMode: false,
-  },
-  build: {
-    // Ensure proper module handling
-    modulePreload: true,
-    target: 'esnext',
-    sourcemap: true
-  }
 })
