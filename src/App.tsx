@@ -2,10 +2,10 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import supabase from './config/supabaseClient';
 
 // Import components
 import Sidebar from './components/Sidebar';
+import ConnectionIndicator from './components/ConnectionIndicator';
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './RegisterPage';
@@ -20,104 +20,64 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import AnnouncementsList from './pages/AnnouncementsList';
 
 function App() {
-  const { currentUser, isLoading } = useAuth();
-  const [sessionExpired, setSessionExpired] = React.useState(false);
-
-  React.useEffect(() => {
-    console.log('[App] isLoading:', isLoading, '| currentUser:', currentUser);
-    if (!isLoading && !currentUser) {
-      setSessionExpired(true);
-    } else {
-      setSessionExpired(false);
-    }
-  }, [isLoading, currentUser]);
-
-  // Refrescar la sesión cuando la ventana gana foco o la pestaña se vuelve visible
-  React.useEffect(() => {
-    const refreshSession = async () => {
-      console.log('[App] Refrescando sesión de Supabase...');
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('[App] getSession() result:', session);
-        if (!session) {
-          setSessionExpired(true);
-        }
-      } catch (e) {
-        console.error('[App] Error al refrescar sesión:', e);
-        setSessionExpired(true);
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshSession();
-      }
-    };
-
-    window.addEventListener('focus', refreshSession);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      window.removeEventListener('focus', refreshSession);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+  const { currentUser, isLoading, connectionError } = useAuth();
 
   // Show loading spinner while checking auth state
   if (isLoading) {
     return (
-      <>
-        <div className="flex justify-center items-center min-h-screen"></div>
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
-      </>
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
     );
   }
 
-  // Ocultar mensaje de sesión expirada en login y register
+  // Detect if we're on auth pages
   const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
 
-  // Si no hay usuario y estamos en login o register, mostrar solo la página correspondiente
+  // If no user and on auth pages, show the auth page
   if (!currentUser && isAuthPage) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <ConnectionIndicator />
         {window.location.pathname === '/login' ? <LoginPage /> : <RegisterPage />}
       </div>
     );
   }
 
-  // Si no hay usuario y no es login/register, mostrar login por defecto
+  // If no user and not on auth pages, redirect to login
   if (!currentUser && !isAuthPage) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <ConnectionIndicator />
         <LoginPage />
       </div>
     );
   }
 
-  // Detectar si estamos en login o register
+  // Handle auth page redirects when user is logged in
   const isLoginPage = window.location.pathname === '/login';
   const isRegisterPage = window.location.pathname === '/register';
-  if (isLoginPage) {
-    return <LoginPage />;
-  }
-  if (isRegisterPage) {
-    return <RegisterPage />;
+  if (isLoginPage || isRegisterPage) {
+    return <Navigate to="/" replace />;
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      <ConnectionIndicator />
+      
+      {/* Connection Error Banner */}
+      {connectionError && (
+        <div className="fixed top-0 left-0 w-full z-40 bg-yellow-100 text-yellow-800 text-center py-2 px-4 border-b border-yellow-200">
+          <span className="text-sm font-medium">{connectionError}</span>
+          <span className="text-xs ml-2">Reintentando automáticamente...</span>
+        </div>
+      )}
+      
       {currentUser && <Sidebar />}
-      <div className={`flex-1 ${currentUser ? 'ml-0' : ''}`}>
-        {sessionExpired && !isAuthPage && (
-          <div className="fixed top-0 left-0 w-full z-50 bg-red-100 text-red-700 text-center py-3 font-semibold shadow flex flex-col items-center">
-            <span>Sesión expirada. Por favor, vuelve a iniciar sesión.</span>
-            <a
-              href="/login"
-              className="mt-2 inline-block px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition font-normal text-base shadow"
-            >
-              Ir al Login
-            </a>
-          </div>
-        )}
+      <div className={`flex-1 ${currentUser ? 'ml-0' : ''} ${connectionError ? 'pt-12' : ''}`}>
         <Routes>
           {/* Public routes */}
           <Route 

@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import supabase from './config/supabaseClient';
 import { User } from '@supabase/supabase-js';
+import { withRetry, isRetryableError } from './utils/retryUtils';
 
 interface AppUser {
   id: string;
@@ -17,6 +18,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, store_id: string) => Promise<boolean>; // Changed parameter type
   logout: () => Promise<void>;
   isLoading: boolean;
+  connectionError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,42 +26,127 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleInvalidSession = async () => {
+  const handleInvalidSession = useCallback(async () => {
     try {
       await supabase.auth.signOut();
     } finally {
       localStorage.clear();
       setCurrentUser(null);
+      setConnectionError(null);
       navigate('/login');
     }
-  };
+  }, [navigate]);
+
+  const loadUserProfile = useCallback(async (user: User) => {
+    try {
+      const profileData = await withRetry(
+        async () => {
+          const { data, error } = await supabase
+            .from('users')
+            .select('name, store_id, role')
+            .eq('auth_id', user.id)
+            .single();
+
+          if (error) throw error;
+          return data;
+        },
+        { maxRetries: 3 }
+      );
+
+      setCurrentUser({
+        id: user.id,
+        email: user.email || '',
+        name: profileData.name,
+        store_id: profileData.store_id, // Now a UUID string
+        role: profileData.role,
+      });
+      setConnectionError(null);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      if (isRetryableError(error)) {
+        setConnectionError('Error de conexión al cargar perfil de usuario');
+      } else {
+        await handleInvalidSession();
+      }
+    }
+  }, [handleInvalidSession]);
+
+  // Debounced session refresh to prevent excessive calls
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await withRetry(
+        () => supabase.auth.getSession(),
+        { maxRetries: 2 }
+      );
+      
+      if (error) throw error;
+      
+      if (!session) {
+        setCurrentUser(null);
+        setConnectionError(null);
+      } else if (session.user && !currentUser) {
+        await loadUserProfile(session.user);
+      }
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+      if (isRetryableError(error)) {
+        setConnectionError('Error de conexión');
+      }
+    }
+  }, [currentUser, loadUserProfile]);
 
   // Load stored user on mount and setup auth listener
   useEffect(() => {
-    console.log('[AuthContext] useEffect mount');
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      console.log('[AuthContext] getSession() on mount:', { data, error });
-      const session = data.session;
-      if (error || !session?.user) {
-        await handleInvalidSession();
-      } else {
-        await loadUserProfile(session.user);
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        if (error || !data.session?.user) {
+          await handleInvalidSession();
+        } else {
+          await loadUserProfile(data.session.user);
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error('Auth initialization error:', error);
+          if (isRetryableError(error)) {
+            setConnectionError('Error de conexión inicial');
+          }
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
-    });
+    };
 
-    // Listen for auth changes
+    initializeAuth();
+
+    // Listen for auth changes with error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', { event, session });
+        if (!mounted) return;
+        
+        console.log('Auth state changed:', { event, session: !!session });
+        
         try {
           if (session?.user) {
             await loadUserProfile(session.user);
           } else {
             setCurrentUser(null);
+            setConnectionError(null);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          if (isRetryableError(error)) {
+            setConnectionError('Error de conexión en cambio de estado');
           }
         } finally {
           setIsLoading(false);
@@ -67,54 +154,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-      console.log('[AuthContext] Unsubscribed from onAuthStateChange');
+    // Reduced frequency session refresh - only on focus, not visibility change
+    let refreshTimeout: NodeJS.Timeout;
+    const handleFocus = () => {
+      if (!mounted) return;
+      
+      // Debounce refresh calls
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        if (mounted && document.hasFocus()) {
+          refreshSession();
+        }
+      }, 1000);
     };
-  }, []);
 
-  useEffect(() => {
-    console.log('[AuthContext] currentUser changed:', currentUser);
-  }, [currentUser]);
+    window.addEventListener('focus', handleFocus);
 
-  useEffect(() => {
-    console.log('[AuthContext] isLoading changed:', isLoading);
-  }, [isLoading]);
-
-  const loadUserProfile = async (user: User) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('name, store_id, role')
-        .eq('auth_id', user.id)
-        .single();
-
-      if (error) throw error;
-
-      setCurrentUser({
-        id: user.id,
-        email: user.email || '',
-        name: data.name,
-        store_id: data.store_id, // Now a UUID string
-        role: data.role,
-      });
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-      try {
-        await handleInvalidSession();
-      } catch (logoutError) {
-        console.error('Error logging out after failed profile load:', logoutError);
-      }
-    }
-  };
+    return () => {
+      mounted = false;
+      clearTimeout(refreshTimeout);
+      subscription.unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [handleInvalidSession, loadUserProfile, refreshSession]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      setConnectionError(null);
+      
+      const { data, error } = await withRetry(
+        () => supabase.auth.signInWithPassword({ email, password }),
+        { maxRetries: 2 }
+      );
 
       if (error) throw error;
 
@@ -126,6 +198,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } catch (error) {
       console.error('Error logging in:', error);
+      if (isRetryableError(error)) {
+        setConnectionError('Error de conexión al iniciar sesión');
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -140,29 +215,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      setConnectionError(null);
+      
+      const { data: signUpData, error: signUpError } = await withRetry(
+        () => supabase.auth.signUp({ email, password }),
+        { maxRetries: 2 }
+      );
+      
       if (signUpError) throw signUpError;
 
       const userId = signUpData.user?.id;
       if (!userId) throw new Error('No se pudo obtener el ID del usuario');
 
-      const { error: insertError } = await supabase.from('users').insert([
-        {
+      await withRetry(
+        () => supabase.from('users').insert([{
           auth_id: userId,
           name,
           email,
           store_id: store_id, // Now a UUID string
           role: 'employee',
-        },
-      ]);
-      if (insertError) throw insertError;
+        }]),
+        { maxRetries: 2 }
+      );
 
       return true;
     } catch (error) {
       console.error('Error registering user:', error);
+      if (isRetryableError(error)) {
+        setConnectionError('Error de conexión al registrar usuario');
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -171,17 +252,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
+      setConnectionError(null);
       await supabase.auth.signOut();
       setCurrentUser(null);
       navigate('/login');
     } catch (error) {
       console.error('Error logging out:', error);
+      if (isRetryableError(error)) {
+        setConnectionError('Error de conexión al cerrar sesión');
+      }
       throw error;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      login, 
+      register, 
+      logout, 
+      isLoading, 
+      connectionError 
+    }}>
       {children}
     </AuthContext.Provider>
   );

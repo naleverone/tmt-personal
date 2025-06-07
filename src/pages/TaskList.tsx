@@ -7,13 +7,14 @@ import { CalendarDays, LayoutGrid, Table, Eraser, Trash2, CheckCircle, Circle } 
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
 import supabase from '../config/supabaseClient';
 import TaskDetailContent from '../components/TaskDetailContent';
+import { withRetry, isRetryableError } from '../utils/retryUtils';
 
 function TaskList() {
   const { currentUser } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [groupedTasks, setGroupedTasks] = useState<GroupedTask[]>([]);
-  const [stores, setStores] = useState<{id: number, name: string}[]>([]);
-  const [users, setUsers] = useState<{auth_id: string, name: string, store_id: number}[]>([]);
+  const [stores, setStores] = useState<{id: string, name: string}[]>([]);
+  const [users, setUsers] = useState<{auth_id: string, name: string, store_id: string}[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [errorTasks, setErrorTasks] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid' | 'calendar'>('table');
@@ -39,11 +40,12 @@ function TaskList() {
       if (!currentUser) return;
       setIsLoadingTasks(true);
       setErrorTasks(null);
+      
       try {
-        // Fetch stores and users for mapping
+        // Fetch stores and users for mapping with retry
         const [storesResult, usersResult] = await Promise.all([
-          supabase.from('stores').select('id, name'),
-          supabase.from('users').select('auth_id, name, store_id')
+          withRetry(() => supabase.from('stores').select('id, name'), { maxRetries: 3 }),
+          withRetry(() => supabase.from('users').select('auth_id, name, store_id'), { maxRetries: 3 })
         ]);
 
         if (storesResult.error) throw storesResult.error;
@@ -52,7 +54,7 @@ function TaskList() {
         setStores(storesResult.data || []);
         setUsers(usersResult.data || []);
 
-        // Fetch tasks based on user role
+        // Fetch tasks based on user role with retry
         let tasksQuery = supabase.from('tasks').select('*');
         
         if (currentUser.role === 'employee') {
@@ -63,11 +65,11 @@ function TaskList() {
           tasksQuery = tasksQuery.eq('store_id', storeFilter);
         }
 
-        const { data: tasksData, error: tasksError } = await tasksQuery;
-        if (tasksError) throw tasksError;
+        const tasksResult = await withRetry(() => tasksQuery, { maxRetries: 3 });
+        if (tasksResult.error) throw tasksResult.error;
 
         // Enrich tasks with user and store names
-        const enrichedTasks = (tasksData || []).map(task => {
+        const enrichedTasks = (tasksResult.data || []).map(task => {
           const user = usersResult.data?.find(u => u.auth_id === task.assigned_user_auth_id);
           const store = storesResult.data?.find(s => s.id === task.store_id);
           return {
@@ -86,7 +88,17 @@ function TaskList() {
         }
 
       } catch (e) {
-        setErrorTasks(e instanceof Error ? e.message : "Error desconocido al cargar tareas");
+        console.error('Error fetching tasks:', e);
+        if (isRetryableError(e)) {
+          setErrorTasks('Error de conexión al cargar tareas. Reintentando...');
+          // Retry after delay
+          setTimeout(() => {
+            setErrorTasks(null);
+            fetchData();
+          }, 3000);
+        } else {
+          setErrorTasks(e instanceof Error ? e.message : "Error desconocido al cargar tareas");
+        }
       } finally {
         setIsLoadingTasks(false);
       }
@@ -95,7 +107,7 @@ function TaskList() {
   }, [currentUser, storeFilter]);
 
   // Group tasks by task_group_uuid for admin view
-  const groupTasksForAdmin = (tasks: Task[], stores: {id: number, name: string}[]): GroupedTask[] => {
+  const groupTasksForAdmin = (tasks: Task[], stores: {id: string, name: string}[]): GroupedTask[] => {
     const grouped = new Map<string, GroupedTask>();
     
     tasks.forEach(task => {
@@ -139,7 +151,7 @@ function TaskList() {
   };
 
   if (isLoadingTasks) return <div className="p-8 text-center">Cargando tareas...</div>;
-  if (errorTasks) return <div className="p-8 text-center text-red-500">Error: {errorTasks}</div>;
+  if (errorTasks) return <div className="p-8 text-center text-red-500">{errorTasks}</div>;
 
   const getPriorityClass = (priority?: string) => {
     switch (priority?.toLowerCase()) {
@@ -200,9 +212,12 @@ function TaskList() {
     
     try {
       if ('is_grouped' in task && task.is_grouped) {
-        // Update all individual tasks in the group
+        // Update all individual tasks in the group with retry
         const updatePromises = task.individual_tasks.map(individualTask =>
-          supabase.from('tasks').update({ status: newStatus }).eq('id', individualTask.id)
+          withRetry(
+            () => supabase.from('tasks').update({ status: newStatus }).eq('id', individualTask.id),
+            { maxRetries: 2 }
+          )
         );
         await Promise.all(updatePromises);
         
@@ -211,12 +226,20 @@ function TaskList() {
           t.id === task.id ? { ...t, status: newStatus, individual_tasks: t.individual_tasks.map(it => ({ ...it, status: newStatus })) } : t
         ));
       } else {
-        // Update single task
-        await supabase.from('tasks').update({ status: newStatus }).eq('id', task.id);
+        // Update single task with retry
+        await withRetry(
+          () => supabase.from('tasks').update({ status: newStatus }).eq('id', task.id),
+          { maxRetries: 2 }
+        );
         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
       }
     } catch (e) {
       console.error('Error updating task status:', e);
+      if (isRetryableError(e)) {
+        // Show temporary error message
+        setErrorTasks('Error de conexión al actualizar estado');
+        setTimeout(() => setErrorTasks(null), 3000);
+      }
     }
   };
 
@@ -232,23 +255,33 @@ function TaskList() {
     
     try {
       if ('is_grouped' in taskToDelete && taskToDelete.is_grouped) {
-        // Delete all individual tasks in the group
+        // Delete all individual tasks in the group with retry
         const deletePromises = taskToDelete.individual_tasks.map(task =>
-          supabase.from('tasks').delete().eq('id', task.id)
+          withRetry(
+            () => supabase.from('tasks').delete().eq('id', task.id),
+            { maxRetries: 2 }
+          )
         );
         await Promise.all(deletePromises);
         setGroupedTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
       } else {
-        // Delete single task
-        const { error } = await supabase.from('tasks').delete().eq('id', taskToDelete.id);
-        if (error) throw error;
+        // Delete single task with retry
+        await withRetry(
+          () => supabase.from('tasks').delete().eq('id', taskToDelete.id),
+          { maxRetries: 2 }
+        );
         setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
       }
       
       setShowDeleteModal(false);
       setTaskToDelete(null);
     } catch (e) {
-      setErrorTasks(e instanceof Error ? e.message : 'Error desconocido al eliminar la tarea');
+      console.error('Error deleting task:', e);
+      if (isRetryableError(e)) {
+        setErrorTasks('Error de conexión al eliminar tarea');
+      } else {
+        setErrorTasks(e instanceof Error ? e.message : 'Error desconocido al eliminar la tarea');
+      }
     } finally {
       setIsLoadingTasks(false);
     }
