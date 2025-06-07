@@ -82,11 +82,11 @@ function App() {
           {/* Public routes */}
           <Route 
             path="/login" 
-            element={currentUser ? <Navigate to="/" replace /> : <LoginPage />} 
+            element={currentUser ? <Navigate to="/\" replace /> : <LoginPage />} 
           />
           <Route 
             path="/register" 
-            element={currentUser ? <Navigate to="/" replace /> : <RegisterPage />} 
+            element={currentUser ? <Navigate to="/\" replace /> : <RegisterPage />} 
           />
           
           {/* Protected routes */}
@@ -166,7 +166,7 @@ function App() {
           />
           
           {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/\" replace />} />
         </Routes>
       </div>
     </div>
