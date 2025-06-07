@@ -7,14 +7,14 @@ interface AppUser {
   id: string;
   name: string;
   email: string;
-  store_id: string; // uuid or number
+  store_id: number; // Changed from string to number
   role: 'supervisor' | 'employee' | 'admin' | string;
 }
 
 interface AuthContextType {
   currentUser: AppUser | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, store_id: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, store_id: number) => Promise<boolean>; // Changed parameter type
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: user.id,
         email: user.email || '',
         name: data.name,
-        store_id: data.store_id, // store_id is now the store ID
+        store_id: typeof data.store_id === 'string' ? parseInt(data.store_id, 10) : data.store_id, // Ensure it's a number
         role: data.role,
       });
     } catch (error) {
@@ -136,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     name: string,
     email: string,
     password: string,
-    store_id: string // add store_id to registration
+    store_id: number // Changed from string to number
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -154,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           auth_id: userId,
           name,
           email,
-          store_id: store_id,
+          store_id: store_id, // Now a number
           role: 'employee',
         },
       ]);

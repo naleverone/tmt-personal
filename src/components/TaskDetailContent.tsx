@@ -4,7 +4,6 @@ import { UploadCloud, CheckCircle, Circle } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import supabase from '../config/supabaseClient';
 
-// Agrego la prop onStatusChange al tipo TaskDetailContentProps
 interface TaskDetailContentProps {
   taskId: number | string;
   onClose?: () => void;
@@ -17,6 +16,7 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assignedUser, setAssignedUser] = useState<User | null>(null);
+  const [storeName, setStoreName] = useState<string>('');
   const [newEvidenceFile, setNewEvidenceFile] = useState<File | null>(null);
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
   const [evidenceList, setEvidenceList] = useState<TaskEvidence[]>([]);
@@ -28,7 +28,8 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
         setIsLoading(false);
         return;
       }
-      setIsLoading(true); setError(null);
+      setIsLoading(true); 
+      setError(null);
       try {
         const { data: taskData, error: taskError } = await supabase
           .from('tasks')
@@ -36,44 +37,59 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
           .eq('id', taskId)
           .single();
         if (taskError || !taskData) throw new Error('Tarea no encontrada.');
+        
+        // Normalize task data for new schema
         const normalizedTask = {
           ...taskData,
-          stores: Array.isArray(taskData.stores)
-            ? taskData.stores
-            : (typeof taskData.stores === 'string' && taskData.stores.length > 0)
-              ? taskData.stores.split(',').map((s: string) => s.trim())
-              : (typeof taskData.store === 'string' && taskData.store.length > 0)
-                ? taskData.store.split(',').map((s: string) => s.trim())
-                : [],
           due_date: taskData.due_date || '',
           priority: taskData.priority,
           status: taskData.status,
-          taskType: taskData.task_type || taskData.taskType || '',
+          task_type: taskData.task_type || taskData.taskType || '',
           assigned_user_auth_id: taskData.assigned_user_auth_id || taskData.assignedUserAuthId || '',
-          evidenceImageUrl: taskData.evidence_image_url || taskData.evidenceImageUrl || '',
-          isRecurring: taskData.is_recurring ?? taskData.isRecurring,
-          recurrencePattern: taskData.recurrence_pattern ?? taskData.recurrencePattern,
+          evidence_image_url: taskData.evidence_image_url || taskData.evidenceImageUrl || '',
+          is_recurring: taskData.is_recurring ?? taskData.isRecurring,
+          recurrence_pattern: taskData.recurrence_pattern ?? taskData.recurrencePattern,
+          store_id: taskData.store_id,
+          task_group_uuid: taskData.task_group_uuid,
         };
         setTask(normalizedTask as Task);
+
+        // Fetch store name
+        if (taskData.store_id) {
+          const { data: storeData, error: storeError } = await supabase
+            .from('stores')
+            .select('name')
+            .eq('id', taskData.store_id)
+            .single();
+          if (!storeError && storeData) {
+            setStoreName(storeData.name);
+          }
+        }
+
+        // Fetch evidence
         const { data: evidenceData } = await supabase
           .from('task_evidence')
           .select('*')
           .eq('task_id', taskData.id)
           .order('created_at', { ascending: true });
         let combinedEvidence = Array.isArray(evidenceData) ? evidenceData as TaskEvidence[] : [];
-        if (normalizedTask.evidenceImageUrl) {
+        
+        // Include legacy evidence if exists
+        if (normalizedTask.evidence_image_url) {
           combinedEvidence = [
             ...combinedEvidence,
             {
               id: `legacy-${taskData.id}`,
               task_id: taskData.id,
-              url: normalizedTask.evidenceImageUrl,
+              url: normalizedTask.evidence_image_url,
               uploaded_by_auth_id: normalizedTask.assigned_user_auth_id || '',
               created_at: normalizedTask.due_date || ''
             } as TaskEvidence,
           ];
         }
         setEvidenceList(combinedEvidence);
+
+        // Fetch assigned user
         if (normalizedTask.assigned_user_auth_id) {
           const { data: userData, error: userError } = await supabase
             .from('users')
@@ -81,7 +97,14 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
             .eq('auth_id', normalizedTask.assigned_user_auth_id)
             .single();
           if (userError || !userData) {
-            setAssignedUser({ id: -1, auth_id: normalizedTask.assigned_user_auth_id, name: `Auth ID: ${normalizedTask.assigned_user_auth_id}`, email: '', store: '', role: '' });
+            setAssignedUser({ 
+              id: -1, 
+              auth_id: normalizedTask.assigned_user_auth_id, 
+              name: `Auth ID: ${normalizedTask.assigned_user_auth_id}`, 
+              email: '', 
+              store_id: taskData.store_id || 0, 
+              role: '' 
+            });
           } else {
             setAssignedUser(userData);
           }
@@ -111,8 +134,10 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
         .from('evidence')
         .upload(filePath, newEvidenceFile);
       if (uploadError) throw uploadError;
+      
       const { data } = supabase.storage.from('evidence').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
+      
       const { data: insertData, error: insertError } = await supabase
         .from('task_evidence')
         .insert({
@@ -123,11 +148,13 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
         .select()
         .single();
       if (insertError) throw insertError;
+      
       const { error: updateError } = await supabase
         .from('tasks')
         .update({ status: 'OK' })
         .eq('id', task.id);
       if (updateError) throw updateError;
+      
       setTask({ ...task, status: 'OK' });
       setEvidenceList([...evidenceList, insertData as TaskEvidence]);
       setNewEvidenceFile(null);
@@ -154,7 +181,6 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
       )}
       <div className="flex flex-col md:flex-row justify-between items-start mb-6 pb-6 border-b border-gray-200">
         <div className="flex items-center w-full">
-          {/* Botón de estado a la izquierda del título */}
           <button
             data-status
             onClick={async e => {
@@ -190,9 +216,12 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6 text-sm">
         <div><strong className="text-gray-500">Tipo de Tarea:</strong> <span className="text-gray-800">{task.task_type || 'No especificado'}</span></div>
-        <div><strong className="text-gray-500">Tiendas:</strong> <span className="text-gray-800">{Array.isArray(task.stores) && task.stores.length > 0 ? task.stores.join(', ') : 'N/A'}</span></div>
+        <div><strong className="text-gray-500">Tienda:</strong> <span className="text-gray-800">{storeName || task.store_id || 'N/A'}</span></div>
         <div><strong className="text-gray-500">Asignada a:</strong> <span className="text-gray-800">{assignedUser?.name || (task.assigned_user_auth_id ? `Auth ID: ${task.assigned_user_auth_id}` : 'Nadie')}</span></div>
         <div><strong className="text-gray-500">Fecha Límite:</strong> <span className="text-gray-800">{task.due_date || 'No definida'}</span></div>
+        {task.task_group_uuid && (
+          <div className="md:col-span-2"><strong className="text-gray-500">Grupo de Tareas:</strong> <span className="text-gray-800 font-mono text-xs">{task.task_group_uuid}</span></div>
+        )}
       </div>
       {task.description && (
         <div className="mb-6">
@@ -208,7 +237,6 @@ const TaskDetailContent: React.FC<TaskDetailContentProps> = ({ taskId, onClose, 
       )}
       {canEditTask && (
         <div className="mt-8 pt-6 border-t border-gray-200 space-y-6">
-          {/* Solo mostrar la sección de evidencia, NO el select de estado */}
           <div>
             <label htmlFor="evidence-upload" className="block text-sm font-medium text-gray-700 mb-1">Subir/Actualizar Evidencia:</label>
             <div className="flex flex-col md:flex-row md:items-center md:space-x-3 space-y-2 md:space-y-0">

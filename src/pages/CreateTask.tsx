@@ -14,8 +14,8 @@ function CreateTask() {
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
-    assignedUserAuthId: string; // Cambiado de assignedUserId
-    stores: string[];
+    assignedUserAuthId: string;
+    selectedStoreIds: number[]; // Changed from stores: string[] to selectedStoreIds: number[]
     due_date: string;
     priority: Task['priority'];
     taskType: string;
@@ -28,8 +28,8 @@ function CreateTask() {
   }>({
     name: '',
     description: '',
-    assignedUserAuthId: '', // Cambiado de assignedUserId
-    stores: currentUser?.role === 'supervisor' ? [currentUser.store_id] : [],
+    assignedUserAuthId: '',
+    selectedStoreIds: currentUser?.role === 'supervisor' ? [currentUser.store_id] : [], // Changed initialization
     due_date: '',
     priority: 'Rutinaria',
     taskType: '',
@@ -42,7 +42,7 @@ function CreateTask() {
   });
 
   const [users, setUsers] = useState<User[]>([]);
-  const [stores, setStores] = useState<{id: number, name: string}[]>([]); // available stores as objects
+  const [stores, setStores] = useState<{id: number, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -55,7 +55,7 @@ function CreateTask() {
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
     message: '',
-    targetStores: [] as number[], // store IDs
+    targetStores: [] as number[],
     allStores: false,
   });
 
@@ -68,6 +68,7 @@ function CreateTask() {
           .select('*');
         if (usersError) throw new Error('Failed to fetch users');
         setUsers(usersData || []);
+        
         // Obtener tiendas desde Supabase
         const { data: storesData, error: storesError } = await supabase
           .from('stores')
@@ -83,18 +84,12 @@ function CreateTask() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    // Adaptar para assignedUserAuthId
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
-  };
-
-  const handleStoresChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const options = Array.from(e.target.selectedOptions).map(o => o.value);
-    setFormData(prev => ({ ...prev, stores: options }));
   };
 
   const handleDayOfWeekChange = (day: number) => {
@@ -106,20 +101,23 @@ function CreateTask() {
     });
   };
 
-  // Checkbox handler para tiendas
-  const handleStoreCheckboxChange = (storeName: string) => {
+  // Checkbox handler para tiendas (now using store IDs)
+  const handleStoreCheckboxChange = (storeId: number) => {
     setFormData(prev => {
-      if (prev.stores.includes(storeName)) {
-        return { ...prev, stores: prev.stores.filter(s => s !== storeName) };
+      if (prev.selectedStoreIds.includes(storeId)) {
+        return { ...prev, selectedStoreIds: prev.selectedStoreIds.filter(id => id !== storeId) };
       } else {
-        return { ...prev, stores: [...prev.stores, storeName] };
+        return { ...prev, selectedStoreIds: [...prev.selectedStoreIds, storeId] };
       }
     });
   };
 
   // Handler para seleccionar/deseleccionar todas las tiendas (Tareas)
   const handleSelectAllStores = (checked: boolean) => {
-    setFormData(prev => ({ ...prev, stores: checked ? stores.map(s => s.name) : [] }));
+    setFormData(prev => ({ 
+      ...prev, 
+      selectedStoreIds: checked ? stores.map(s => s.id) : [] 
+    }));
   };
 
   // Handler para campos de texto
@@ -162,7 +160,7 @@ function CreateTask() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-    setShowModal(false); // Cierra el modal inmediatamente
+    setShowModal(false);
 
     if (!currentUser) {
       setOverlayType('error');
@@ -190,22 +188,52 @@ function CreateTask() {
           recurrencePattern.dayOfMonth = formData.dayOfMonth;
         }
       }
-      const taskToInsert = {
-        name: formData.name,
-        description: formData.description,
-        store: formData.stores.join(','),
-        assigned_user_id: formData.assignedUserAuthId || null,
-        due_date: formData.due_date,
-        priority: formData.priority,
-        status: 'Pendiente',
-        task_type: formData.taskType,
-        evidence_image_url: '',
-        is_recurring: formData.isRecurring,
-        recurrence_pattern: formData.isRecurring ? recurrencePattern : null,
-        assigned_user_auth_id: formData.assignedUserAuthId || null,
-      };
-      const { error: insertError } = await supabase.from('tasks').insert(taskToInsert);
-      if (insertError) throw insertError;
+
+      // Check if multiple stores are selected (admin creating grouped task)
+      if (currentUser.role === 'admin' && formData.selectedStoreIds.length > 1) {
+        // Create grouped tasks with shared task_group_uuid
+        const taskGroupUuid = uuidv4();
+        const tasksToInsert = formData.selectedStoreIds.map(storeId => ({
+          name: formData.name,
+          description: formData.description,
+          store_id: storeId,
+          assigned_user_auth_id: formData.assignedUserAuthId || null,
+          due_date: formData.due_date,
+          priority: formData.priority,
+          status: 'Pendiente',
+          task_type: formData.taskType,
+          evidence_image_url: '',
+          is_recurring: formData.isRecurring,
+          recurrence_pattern: formData.isRecurring ? recurrencePattern : null,
+          task_group_uuid: taskGroupUuid,
+        }));
+
+        const { error: insertError } = await supabase.from('tasks').insert(tasksToInsert);
+        if (insertError) throw insertError;
+      } else {
+        // Create single task
+        const storeId = formData.selectedStoreIds[0];
+        if (!storeId) throw new Error('Debe seleccionar al menos una tienda');
+
+        const taskToInsert = {
+          name: formData.name,
+          description: formData.description,
+          store_id: storeId,
+          assigned_user_auth_id: formData.assignedUserAuthId || null,
+          due_date: formData.due_date,
+          priority: formData.priority,
+          status: 'Pendiente',
+          task_type: formData.taskType,
+          evidence_image_url: '',
+          is_recurring: formData.isRecurring,
+          recurrence_pattern: formData.isRecurring ? recurrencePattern : null,
+          task_group_uuid: null,
+        };
+
+        const { error: insertError } = await supabase.from('tasks').insert(taskToInsert);
+        if (insertError) throw insertError;
+      }
+
       setOverlayType('success');
       setOverlayMessage('¡Tarea creada exitosamente!');
       setTimeout(() => {
@@ -240,9 +268,9 @@ function CreateTask() {
   const weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
   // Filtrar usuarios según tiendas seleccionadas
-  const filteredUsers = formData.stores.length === 0
+  const filteredUsers = formData.selectedStoreIds.length === 0
     ? users
-    : users.filter(u => formData.stores.includes(u.store_id));
+    : users.filter(u => formData.selectedStoreIds.includes(u.store_id));
 
   return (
     <div className="p-8">
@@ -275,7 +303,6 @@ function CreateTask() {
           >
             Crear Tarea
           </button>
-          {/* Aquí podrías agregar una lista de tareas creadas, si lo deseas */}
         </div>
       )}
       {activeTab === 'announcements' && (
@@ -286,7 +313,6 @@ function CreateTask() {
           >
             Crear Comunicado
           </button>
-          {/* Aquí irá el modal de creación de comunicado */}
         </div>
       )}
       {showModal && !overlayMessage && (
@@ -338,26 +364,34 @@ function CreateTask() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tiendas *</label>
                   <div className="border rounded-md p-2 bg-gray-50 max-h-40 overflow-y-auto">
-                    <label className="flex items-center mb-2 font-medium">
-                      <input
-                        type="checkbox"
-                        checked={formData.stores.length === stores.length && stores.length > 0}
-                        onChange={e => handleSelectAllStores(e.target.checked)}
-                        className="mr-2"
-                      />
-                      Seleccionar todas
-                    </label>
-                    {stores.map(store => (
-                      <label key={store.id} className="flex items-center mb-1">
+                    {currentUser?.role === 'admin' && (
+                      <label className="flex items-center mb-2 font-medium">
                         <input
                           type="checkbox"
-                          checked={formData.stores.includes(store.name)}
-                          onChange={() => handleStoreCheckboxChange(store.name)}
+                          checked={formData.selectedStoreIds.length === stores.length && stores.length > 0}
+                          onChange={e => handleSelectAllStores(e.target.checked)}
                           className="mr-2"
                         />
-                        {store.name}
+                        Seleccionar todas
                       </label>
-                    ))}
+                    )}
+                    {stores.map(store => {
+                      const isDisabled = currentUser?.role === 'supervisor' && store.id !== currentUser.store_id;
+                      const isChecked = formData.selectedStoreIds.includes(store.id);
+                      
+                      return (
+                        <label key={store.id} className={`flex items-center mb-1 ${isDisabled ? 'opacity-50' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => !isDisabled && handleStoreCheckboxChange(store.id)}
+                            disabled={isDisabled}
+                            className="mr-2"
+                          />
+                          {store.name}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
                 {/* Usuarios después, filtrados por tiendas seleccionadas */}
@@ -374,8 +408,9 @@ function CreateTask() {
                   >
                     <option value="">Sin asignar</option>
                     {filteredUsers.map((user) => (
-                      (currentUser?.role === 'admin' || user.store_id === currentUser?.store_id) &&
-                      <option key={user.id} value={user.auth_id}>{user.name} ({user.store_id})</option>
+                      <option key={user.id} value={user.auth_id}>
+                        {user.name} ({stores.find(s => s.id === user.store_id)?.name || user.store_id})
+                      </option>
                     ))}
                   </select>
                 </div>

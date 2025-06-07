@@ -4,12 +4,12 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    store_id: string; // uuid or number, depending on your DB
+    store_id: number; // Changed from string to number
     role: 'supervisor' | 'employee' | 'admin' | string;
     auth_id: string; // UUID de Supabase Auth
 }
 
-// Nota: El rol 'employee' se muestra como 'Vendedor' en la interfaz.
+// Note: The 'employee' role is displayed as 'Vendedor' in the interface.
 
 export interface Store {
     id: number;
@@ -29,16 +29,13 @@ export interface RecurrencePattern {
     dayOfMonth?: number; // 1-31
     endDate?: string; // When the recurrence ends
 }
-  
+
 export interface Task {
     id: number;
     name: string;
     description?: string;
-    /**
-     * Stores associated with this task. Each entry is a store name or ID
-     * depending on how the backend is configured.
-     */
-    stores?: string[];
+    store_id: number; // Changed: single store ID instead of stores array
+    task_group_uuid?: string; // Added: UUID to group related tasks for admins
     /**
      * @deprecated Use `assigned_user_auth_id` instead.
      */
@@ -63,3 +60,23 @@ export interface TaskEvidence {
     created_at: string;
 }
 
+// New interface for grouped tasks (admin view)
+export interface GroupedTask {
+    id: string; // task_group_uuid or individual task id
+    name: string;
+    description?: string;
+    store_ids: number[]; // Array of store IDs for grouped tasks
+    store_names: string[]; // Array of store names for display
+    assigned_user_auth_id?: string;
+    assigned_user_name?: string;
+    due_date?: string;
+    priority?: 'Urgente' | 'Rutinaria' | string;
+    status?: 'Pendiente' | 'OK' | string; // Consolidated status for grouped tasks
+    task_type?: string;
+    evidence_image_url?: string | null;
+    is_recurring?: boolean;
+    recurrence_pattern?: RecurrencePattern;
+    task_group_uuid?: string;
+    individual_tasks: Task[]; // Array of individual task instances
+    is_grouped: boolean; // True if this represents multiple tasks
+}
