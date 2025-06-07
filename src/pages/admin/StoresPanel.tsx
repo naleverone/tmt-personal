@@ -4,7 +4,7 @@ import { Store } from '../../types';
 import supabase from '../../config/supabaseClient';
 
 interface EditingStore extends Partial<Store> {
-  id?: number;
+  id?: string;
 }
 
 function StoresPanel() {
@@ -55,7 +55,7 @@ function StoresPanel() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm('¿Estás seguro de que quieres eliminar esta tienda?')) return;
     try {
       const { error: deleteError } = await supabase.from('stores').delete().eq('id', id);

@@ -4,7 +4,7 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    store_id: number; // Changed from string to number
+    store_id: string; // UUID string
     role: 'supervisor' | 'employee' | 'admin' | string;
     auth_id: string; // UUID de Supabase Auth
 }
@@ -12,9 +12,9 @@ export interface User {
 // Note: The 'employee' role is displayed as 'Vendedor' in the interface.
 
 export interface Store {
-    id: number;
+    id: string; // UUID string
     name: string;
-    external_id: number;
+    external_id?: string;
     street_name: string;
     street_number: string;
     additional_info?: string;
@@ -34,7 +34,7 @@ export interface Task {
     id: number;
     name: string;
     description?: string;
-    store_id: number; // Changed: single store ID instead of stores array
+    store_id: string; // UUID string
     task_group_uuid?: string; // Added: UUID to group related tasks for admins
     /**
      * @deprecated Use `assigned_user_auth_id` instead.
@@ -50,6 +50,7 @@ export interface Task {
     evidence_image_url?: string | null;
     is_recurring?: boolean;
     recurrence_pattern?: RecurrencePattern;
+    store_name?: string; // For display purposes
 }
 
 export interface TaskEvidence {
@@ -58,6 +59,7 @@ export interface TaskEvidence {
     url: string;
     uploaded_by_auth_id: string;
     created_at: string;
+    store_id?: string; // UUID string
 }
 
 // New interface for grouped tasks (admin view)
@@ -65,7 +67,7 @@ export interface GroupedTask {
     id: string; // task_group_uuid or individual task id
     name: string;
     description?: string;
-    store_ids: number[]; // Array of store IDs for grouped tasks
+    store_ids: string[]; // Array of store UUIDs
     store_names: string[]; // Array of store names for display
     assigned_user_auth_id?: string;
     assigned_user_name?: string;

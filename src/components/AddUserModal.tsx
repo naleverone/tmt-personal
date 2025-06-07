@@ -15,7 +15,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
     store_id: '',
     role: '',
   });
-  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
+  const [stores, setStores] = useState<{ id: string, name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -65,7 +65,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
           auth_id: userId,
           name: formData.name,
           email: formData.email,
-          store_id: parseInt(formData.store_id, 10), // Convert to number
+          store_id: formData.store_id, // Now a UUID string
           role: formData.role,
         }
       ]);

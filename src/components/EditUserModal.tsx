@@ -14,7 +14,7 @@ interface EditUserModalProps {
 
 function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUserModalProps) {
   const [formData, setFormData] = useState<User | null>(null);
-  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
+  const [stores, setStores] = useState<{ id: string, name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -46,7 +46,7 @@ function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUs
     const { name, value } = e.target;
     setFormData(prev => prev ? { 
       ...prev, 
-      [name]: name === 'store_id' ? parseInt(value, 10) : value 
+      [name]: value // store_id is now a string (UUID)
     } : null);
   };
 

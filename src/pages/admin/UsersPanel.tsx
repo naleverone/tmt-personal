@@ -7,7 +7,7 @@ import supabase from '../../config/supabaseClient';
 
 function UsersPanel() {
   const [usersData, setUsersData] = useState<User[]>([]);
-  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
+  const [stores, setStores] = useState<{ id: string, name: string }[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);

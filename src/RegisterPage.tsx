@@ -9,8 +9,8 @@ function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
-  const [storeId, setStoreId] = useState<number | ''>('');
+  const [stores, setStores] = useState<{ id: string, name: string }[]>([]);
+  const [storeId, setStoreId] = useState<string>('');
   const navigate = useNavigate();
   const { register } = useAuth();
 
@@ -28,7 +28,7 @@ function RegisterPage() {
     setIsLoading(true);
     try {
       if (!storeId) throw new Error('Debes seleccionar una tienda');
-      const success = await register(name, email, password, storeId as number);
+      const success = await register(name, email, password, storeId);
       if (success) {
         navigate('/login');
       } else {
@@ -85,7 +85,7 @@ function RegisterPage() {
             <select
               id="store"
               value={storeId}
-              onChange={e => setStoreId(e.target.value ? parseInt(e.target.value, 10) : '')}
+              onChange={e => setStoreId(e.target.value)}
               required
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
