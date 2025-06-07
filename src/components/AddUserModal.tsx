@@ -13,7 +13,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
     email: '',
     password: '',
     store_id: '',
-    role: '', // Cambiado de 'employee' a '' para forzar selección
+    role: '',
   });
   const [stores, setStores] = useState<{ id: number, name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -21,15 +21,15 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
 
   useEffect(() => {
     if (!isOpen) return;
-        // Limpiar campos al abrir el modal
+    // Clear form when opening modal
     setFormData({
       name: '',
       email: '',
       password: '',
       store_id: '',
-      role: '', // Cambiado de 'employee' a '' para forzar selección
+      role: '',
     });
-    // Cargar tiendas desde Supabase
+    // Load stores from Supabase
     const fetchStores = async () => {
       const { data, error } = await supabase.from('stores').select('id, name');
       if (!error) setStores(data || []);
@@ -48,7 +48,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
     setLoading(true);
 
     try {
-      // 1. Crear usuario en Supabase Auth
+      // 1. Create user in Supabase Auth
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -59,13 +59,13 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
       const userId = signUpData.user?.id;
       if (!userId) throw new Error('No se pudo obtener el ID del usuario');
 
-      // 2. Insertar datos adicionales en la tabla users
+      // 2. Insert additional data in users table
       const { error: insertError } = await supabase.from('users').insert([
         {
           auth_id: userId,
           name: formData.name,
           email: formData.email,
-          store_id: formData.store_id,
+          store_id: parseInt(formData.store_id, 10), // Convert to number
           role: formData.role,
         }
       ]);
@@ -133,4 +133,3 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
 };
 
 export default AddUserModal;
-

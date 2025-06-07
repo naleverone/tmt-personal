@@ -114,7 +114,7 @@ function UsersPanel() {
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stores.find(s => String(s.id) === String(user.store_id))?.name || 'Sin tienda'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stores.find(s => s.id === user.store_id)?.name || 'Sin tienda'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     user.role === 'admin' ? 'bg-red-100 text-red-800' :

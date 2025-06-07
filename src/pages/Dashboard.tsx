@@ -23,7 +23,7 @@ function Dashboard() {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (currentUser.role !== 'admin') {
-        // Mostrar solo comunicados globales o para la tienda del usuario (por ID)
+        // Show only global announcements or those for the user's store (by ID)
         query = query.or(`target_store_ids.is.null,target_store_ids.cs.{${currentUser.store_id}}`);
       }
       const { data, error } = await query;
@@ -52,7 +52,7 @@ function Dashboard() {
         <p className="text-gray-500 text-sm">Rol: {currentUser.role === 'admin' ? 'Administrador' : currentUser.role === 'supervisor' ? 'Supervisor' : 'Vendedor'}</p>
       </div>
 
-      {/* Comunicados activos */}
+      {/* Active announcements */}
       <div className="max-w-3xl mx-auto">
         {announcements.length > 0 && (
           <div className="mb-10">
@@ -82,4 +82,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-

@@ -44,7 +44,10 @@ function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUs
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => prev ? { ...prev, [name]: value } : null);
+    setFormData(prev => prev ? { 
+      ...prev, 
+      [name]: name === 'store_id' ? parseInt(value, 10) : value 
+    } : null);
   };
 
   const handleSave = () => {
@@ -57,11 +60,11 @@ function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUs
     if (!formData) return;
     if (!window.confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) return;
     try {
-      // 1. Elimina de la tabla users
+      // 1. Delete from users table
       const { error: deleteError } = await supabase.from('users').delete().eq('auth_id', formData.auth_id);
       if (deleteError) throw new Error('Error al eliminar el usuario de la base de datos');
 
-      // 2. Elimina de Supabase Auth usando el endpoint backend
+      // 2. Delete from Supabase Auth using backend endpoint
       const response = await fetch('http://localhost:3001/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,4 +146,3 @@ function EditUserModal({ isOpen, onClose, user, onSave, availableRoles }: EditUs
 }
 
 export default EditUserModal;
-
