@@ -83,7 +83,7 @@ function StoreOverviewPage() {
   });
 
   if (!currentUser || (currentUser.role !== 'supervisor' && currentUser.role !== 'admin')) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/\" replace />;
   }
 
   if (isLoading) return <div className="p-8 text-center">Cargando vista general de tienda...</div>;
@@ -137,7 +137,7 @@ function StoreOverviewPage() {
       <div className="mb-6 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
         {currentUser.role === 'admin' && (
           <div>
-            <label htmlFor="store-filter-overview" className="block text-xs font-medium text-gray-500 mb-1">Tienda</label>
+            <label htmlFor="store-filter-overview\" className="block text-xs font-medium text-gray-500 mb-1">Tienda</label>
             <select
               id="store-filter-overview"
               value={storeFilter}
