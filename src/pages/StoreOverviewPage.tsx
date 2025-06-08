@@ -4,7 +4,6 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { Task, User } from '../types';
 import supabase from '../config/supabaseClient';
-import { withRetry, isRetryableError } from '../utils/retryUtils';
 
 function StoreOverviewPage() {
   const { currentUser } = useAuth();
@@ -12,7 +11,7 @@ function StoreOverviewPage() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [stores, setStores] = useState<{id: string, name: string}[]>([]);
+  const [stores, setStores] = useState<{id: number, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +30,10 @@ function StoreOverviewPage() {
       setIsLoading(true);
       setError(null);
       try {
-        // Fetch stores, users, and tasks with retry
+        // Fetch stores, users, and tasks
         const [storesResult, usersResult] = await Promise.all([
-          withRetry(() => supabase.from('stores').select('id, name'), { maxRetries: 3 }),
-          withRetry(() => supabase.from('users').select('*'), { maxRetries: 3 })
+          supabase.from('stores').select('id, name'),
+          supabase.from('users').select('*')
         ]);
 
         if (storesResult.error) throw storesResult.error;
@@ -52,11 +51,11 @@ function StoreOverviewPage() {
           tasksQuery = tasksQuery.eq('store_id', storeFilter);
         }
 
-        const tasksResult = await withRetry(() => tasksQuery, { maxRetries: 3 });
-        if (tasksResult.error) throw tasksResult.error;
+        const { data: tasksData, error: tasksError } = await tasksQuery;
+        if (tasksError) throw tasksError;
 
         // Enrich tasks with user and store names
-        const tasksWithUserNames = (tasksResult.data || []).map(task => {
+        const tasksWithUserNames = (tasksData || []).map(task => {
           const user = usersResult.data?.find(u => u.auth_id === task.assigned_user_auth_id);
           const store = storesResult.data?.find(s => s.id === task.store_id);
           return {
@@ -68,17 +67,7 @@ function StoreOverviewPage() {
 
         setTasks(tasksWithUserNames);
       } catch (e) {
-        console.error('Error fetching data:', e);
-        if (isRetryableError(e)) {
-          setError('Error de conexión al cargar datos. Reintentando...');
-          // Retry after delay
-          setTimeout(() => {
-            setError(null);
-            fetchData();
-          }, 3000);
-        } else {
-          setError(e instanceof Error ? e.message : "Error desconocido al cargar datos");
-        }
+        setError(e instanceof Error ? e.message : "Error desconocido al cargar datos");
       } finally {
         setIsLoading(false);
       }
@@ -94,7 +83,7 @@ function StoreOverviewPage() {
   });
 
   if (!currentUser || (currentUser.role !== 'supervisor' && currentUser.role !== 'admin')) {
-    return <Navigate to="/\" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (isLoading) return <div className="p-8 text-center">Cargando vista general de tienda...</div>;
@@ -148,7 +137,7 @@ function StoreOverviewPage() {
       <div className="mb-6 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
         {currentUser.role === 'admin' && (
           <div>
-            <label htmlFor="store-filter-overview\" className="block text-xs font-medium text-gray-500 mb-1">Tienda</label>
+            <label htmlFor="store-filter-overview" className="block text-xs font-medium text-gray-500 mb-1">Tienda</label>
             <select
               id="store-filter-overview"
               value={storeFilter}
