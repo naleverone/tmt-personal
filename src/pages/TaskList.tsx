@@ -598,7 +598,7 @@ function TaskList() {
       <div className="mb-6 p-4 bg-white rounded-xl shadow-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end w-full">
         {currentUser?.role === 'admin' && (
           <div>
-            <label htmlFor="store-filter-tasks" className="block text-xs font-medium text-gray-500 mb-1">Tienda</label>
+            <label htmlFor="store-filter-tasks\" className="block text-xs font-medium text-gray-500 mb-1">Tienda</label>
             <select
               id="store-filter-tasks"
               value={storeFilter}
