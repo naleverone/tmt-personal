@@ -6,7 +6,6 @@ import { User, Task, RecurrencePattern } from '../types';
 import supabase from '../config/supabaseClient';
 import { ClipboardList, Megaphone } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { withRetry, isRetryableError } from '../utils/retryUtils';
 
 function CreateTask() {
   const { currentUser } = useAuth();
@@ -16,7 +15,7 @@ function CreateTask() {
     name: string;
     description: string;
     assignedUserAuthId: string;
-    selectedStoreIds: string[]; // Changed from number[] to string[]
+    selectedStoreIds: number[]; // Changed from stores: string[] to selectedStoreIds: number[]
     due_date: string;
     priority: Task['priority'];
     taskType: string;
@@ -43,7 +42,7 @@ function CreateTask() {
   });
 
   const [users, setUsers] = useState<User[]>([]);
-  const [stores, setStores] = useState<{id: string, name: string}[]>([]);
+  const [stores, setStores] = useState<{id: number, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -56,40 +55,28 @@ function CreateTask() {
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
     message: '',
-    targetStores: [] as string[],
+    targetStores: [] as number[],
     allStores: false,
   });
 
   useEffect(() => {
     const fetchDataForForm = async () => {
       try {
-        // Obtener usuarios desde Supabase with retry
-        const usersData = await withRetry(
-          () => supabase.from('users').select('*'),
-          { maxRetries: 3 }
-        );
-        if (usersData.error) throw new Error('Failed to fetch users');
-        setUsers(usersData.data || []);
+        // Obtener usuarios desde Supabase
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('*');
+        if (usersError) throw new Error('Failed to fetch users');
+        setUsers(usersData || []);
         
-        // Obtener tiendas desde Supabase with retry
-        const storesData = await withRetry(
-          () => supabase.from('stores').select('id, name'),
-          { maxRetries: 3 }
-        );
-        if (storesData.error) throw new Error('Failed to fetch stores');
-        setStores(storesData.data || []);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        if (isRetryableError(err)) {
-          setError('Error de conexión al cargar datos. Reintentando...');
-          // Retry after a delay
-          setTimeout(() => {
-            setError(null);
-            fetchDataForForm();
-          }, 3000);
-        } else {
-          setError('Error al cargar usuarios o tiendas');
-        }
+        // Obtener tiendas desde Supabase
+        const { data: storesData, error: storesError } = await supabase
+          .from('stores')
+          .select('id, name');
+        if (storesError) throw new Error('Failed to fetch stores');
+        setStores(storesData || []);
+      } catch {
+        setError('Error al cargar usuarios o tiendas');
       }
     };
     fetchDataForForm();
@@ -114,8 +101,8 @@ function CreateTask() {
     });
   };
 
-  // Checkbox handler para tiendas (now using store UUIDs)
-  const handleStoreCheckboxChange = (storeId: string) => {
+  // Checkbox handler para tiendas (now using store IDs)
+  const handleStoreCheckboxChange = (storeId: number) => {
     setFormData(prev => {
       if (prev.selectedStoreIds.includes(storeId)) {
         return { ...prev, selectedStoreIds: prev.selectedStoreIds.filter(id => id !== storeId) };
@@ -149,7 +136,7 @@ function CreateTask() {
   };
 
   // Handler para seleccionar tiendas individuales
-  const handleAnnouncementStoreCheckbox = (storeId: string) => {
+  const handleAnnouncementStoreCheckbox = (storeId: number) => {
     setAnnouncementForm(prev => {
       if (prev.targetStores.includes(storeId)) {
         const newStores = prev.targetStores.filter(s => s !== storeId);
@@ -221,11 +208,8 @@ function CreateTask() {
           task_group_uuid: taskGroupUuid,
         }));
 
-        const insertResult = await withRetry(
-          () => supabase.from('tasks').insert(tasksToInsert),
-          { maxRetries: 3 }
-        );
-        if (insertResult.error) throw insertResult.error;
+        const { error: insertError } = await supabase.from('tasks').insert(tasksToInsert);
+        if (insertError) throw insertError;
       } else {
         // Create single task
         const storeId = formData.selectedStoreIds[0];
@@ -246,11 +230,8 @@ function CreateTask() {
           task_group_uuid: null,
         };
 
-        const insertResult = await withRetry(
-          () => supabase.from('tasks').insert(taskToInsert),
-          { maxRetries: 3 }
-        );
-        if (insertResult.error) throw insertResult.error;
+        const { error: insertError } = await supabase.from('tasks').insert(taskToInsert);
+        if (insertError) throw insertError;
       }
 
       setOverlayType('success');
@@ -261,24 +242,13 @@ function CreateTask() {
         setIsLoading(false);
       }, 1800);
     } catch (err) {
-      console.error('Error creating task:', err);
-      if (isRetryableError(err)) {
-        setOverlayType('error');
-        setOverlayMessage('Error de conexión. Reintentando...');
-        setTimeout(() => {
-          setOverlayMessage(null);
-          setOverlayType(null);
-          handleSubmit(e); // Retry
-        }, 2000);
-      } else {
-        setOverlayType('error');
-        setOverlayMessage(err instanceof Error ? err.message : 'Ocurrió un error desconocido');
-        setTimeout(() => {
-          setOverlayMessage(null);
-          setOverlayType(null);
-          setIsLoading(false);
-        }, 2200);
-      }
+      setOverlayType('error');
+      setOverlayMessage(err instanceof Error ? err.message : 'Ocurrió un error desconocido');
+      setTimeout(() => {
+        setOverlayMessage(null);
+        setOverlayType(null);
+        setIsLoading(false);
+      }, 2200);
     } finally {
       setIsLoading(false);
     }
@@ -659,30 +629,21 @@ function CreateTask() {
                 setShowAnnouncementModal(false);
                 try {
                   const targetStoreIds = announcementForm.allStores ? null : announcementForm.targetStores;
-                  const insertResult = await withRetry(
-                    () => supabase.from('announcements').insert({
-                      id: uuidv4(),
-                      title: announcementForm.title,
-                      message: announcementForm.message,
-                      created_at: new Date().toISOString(),
-                      created_by: currentUser.id,
-                      target_store_ids: targetStoreIds,
-                    }),
-                    { maxRetries: 3 }
-                  );
-                  if (insertResult.error) throw insertResult.error;
+                  const { error } = await supabase.from('announcements').insert({
+                    id: uuidv4(),
+                    title: announcementForm.title,
+                    message: announcementForm.message,
+                    created_at: new Date().toISOString(),
+                    created_by: currentUser.id,
+                    target_store_ids: targetStoreIds,
+                  });
+                  if (error) throw error;
                   setOverlayType('success');
                   setOverlayMessage('¡Comunicado creado exitosamente!');
                   setAnnouncementForm({ title: '', message: '', targetStores: [], allStores: false });
                 } catch (err) {
-                  console.error('Error creating announcement:', err);
-                  if (isRetryableError(err)) {
-                    setOverlayType('error');
-                    setOverlayMessage('Error de conexión. Reintentando...');
-                  } else {
-                    setOverlayType('error');
-                    setOverlayMessage('Error al crear el comunicado.');
-                  }
+                  setOverlayType('error');
+                  setOverlayMessage('Error al crear el comunicado.');
                 }
               }}
             >
