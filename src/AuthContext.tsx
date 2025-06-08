@@ -2,7 +2,6 @@ import { createContext, useContext, useState, ReactNode, useEffect, useCallback 
 import { useNavigate } from 'react-router-dom';
 import supabase from './config/supabaseClient';
 import { User } from '@supabase/supabase-js';
-import { withRetry, isRetryableError } from './utils/retryUtils';
 
 interface AppUser {
   id: string;
@@ -15,7 +14,7 @@ interface AppUser {
 interface AuthContextType {
   currentUser: AppUser | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, store_id: string) => Promise<boolean>; // Changed parameter type
+  register: (name: string, email: string, password: string, store_id: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
   connectionError: string | null;
@@ -42,61 +41,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadUserProfile = useCallback(async (user: User) => {
     try {
-      const profileData = await withRetry(
-        async () => {
-          const { data, error } = await supabase
-            .from('users')
-            .select('name, store_id, role')
-            .eq('auth_id', user.id)
-            .single();
+      const { data, error } = await supabase
+        .from('users')
+        .select('name, store_id, role')
+        .eq('auth_id', user.id)
+        .single();
 
-          if (error) throw error;
-          return data;
-        },
-        { maxRetries: 3 }
-      );
+      if (error) throw error;
 
       setCurrentUser({
         id: user.id,
         email: user.email || '',
-        name: profileData.name,
-        store_id: profileData.store_id, // Now a UUID string
-        role: profileData.role,
+        name: data.name,
+        store_id: data.store_id, // Now a UUID string
+        role: data.role,
       });
       setConnectionError(null);
     } catch (error) {
       console.error('Error loading user profile:', error);
-      if (isRetryableError(error)) {
-        setConnectionError('Error de conexión al cargar perfil de usuario');
-      } else {
-        await handleInvalidSession();
-      }
+      setConnectionError('Error al cargar perfil de usuario');
+      // Don't call handleInvalidSession here to avoid infinite loops
     }
-  }, [handleInvalidSession]);
-
-  // Debounced session refresh to prevent excessive calls
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session }, error } = await withRetry(
-        () => supabase.auth.getSession(),
-        { maxRetries: 2 }
-      );
-      
-      if (error) throw error;
-      
-      if (!session) {
-        setCurrentUser(null);
-        setConnectionError(null);
-      } else if (session.user && !currentUser) {
-        await loadUserProfile(session.user);
-      }
-    } catch (error) {
-      console.error('Error refreshing session:', error);
-      if (isRetryableError(error)) {
-        setConnectionError('Error de conexión');
-      }
-    }
-  }, [currentUser, loadUserProfile]);
+  }, []);
 
   // Load stored user on mount and setup auth listener
   useEffect(() => {
@@ -109,16 +75,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         
         if (error || !data.session?.user) {
-          await handleInvalidSession();
+          setCurrentUser(null);
         } else {
           await loadUserProfile(data.session.user);
         }
       } catch (error) {
         if (mounted) {
           console.error('Auth initialization error:', error);
-          if (isRetryableError(error)) {
-            setConnectionError('Error de conexión inicial');
-          }
+          setConnectionError('Error de conexión inicial');
+          setCurrentUser(null);
         }
       } finally {
         if (mounted) {
@@ -145,48 +110,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (error) {
           console.error('Auth state change error:', error);
-          if (isRetryableError(error)) {
-            setConnectionError('Error de conexión en cambio de estado');
-          }
+          setConnectionError('Error de conexión en cambio de estado');
         } finally {
-          setIsLoading(false);
+          if (mounted) {
+            setIsLoading(false);
+          }
         }
       }
     );
 
-    // Reduced frequency session refresh - only on focus, not visibility change
-    let refreshTimeout: NodeJS.Timeout;
-    const handleFocus = () => {
-      if (!mounted) return;
-      
-      // Debounce refresh calls
-      clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(() => {
-        if (mounted && document.hasFocus()) {
-          refreshSession();
-        }
-      }, 1000);
-    };
-
-    window.addEventListener('focus', handleFocus);
-
     return () => {
       mounted = false;
-      clearTimeout(refreshTimeout);
       subscription.unsubscribe();
-      window.removeEventListener('focus', handleFocus);
     };
-  }, [handleInvalidSession, loadUserProfile, refreshSession]);
+  }, [loadUserProfile]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       setConnectionError(null);
       
-      const { data, error } = await withRetry(
-        () => supabase.auth.signInWithPassword({ email, password }),
-        { maxRetries: 2 }
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) throw error;
 
@@ -198,9 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } catch (error) {
       console.error('Error logging in:', error);
-      if (isRetryableError(error)) {
-        setConnectionError('Error de conexión al iniciar sesión');
-      }
+      setConnectionError('Error al iniciar sesión');
       throw error;
     } finally {
       setIsLoading(false);
@@ -211,39 +153,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     name: string,
     email: string,
     password: string,
-    store_id: string // Changed from number to string (UUID)
+    store_id: string
   ): Promise<boolean> => {
     try {
       setIsLoading(true);
       setConnectionError(null);
       
-      const { data: signUpData, error: signUpError } = await withRetry(
-        () => supabase.auth.signUp({ email, password }),
-        { maxRetries: 2 }
-      );
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
       
       if (signUpError) throw signUpError;
 
       const userId = signUpData.user?.id;
       if (!userId) throw new Error('No se pudo obtener el ID del usuario');
 
-      await withRetry(
-        () => supabase.from('users').insert([{
-          auth_id: userId,
-          name,
-          email,
-          store_id: store_id, // Now a UUID string
-          role: 'employee',
-        }]),
-        { maxRetries: 2 }
-      );
+      const { error: insertError } = await supabase.from('users').insert([{
+        auth_id: userId,
+        name,
+        email,
+        store_id: store_id,
+        role: 'employee',
+      }]);
+
+      if (insertError) throw insertError;
 
       return true;
     } catch (error) {
       console.error('Error registering user:', error);
-      if (isRetryableError(error)) {
-        setConnectionError('Error de conexión al registrar usuario');
-      }
+      setConnectionError('Error al registrar usuario');
       throw error;
     } finally {
       setIsLoading(false);
@@ -258,9 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       navigate('/login');
     } catch (error) {
       console.error('Error logging out:', error);
-      if (isRetryableError(error)) {
-        setConnectionError('Error de conexión al cerrar sesión');
-      }
+      setConnectionError('Error al cerrar sesión');
       throw error;
     }
   };

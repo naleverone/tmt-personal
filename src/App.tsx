@@ -5,7 +5,6 @@ import { useAuth } from './AuthContext';
 
 // Import components
 import Sidebar from './components/Sidebar';
-import ConnectionIndicator from './components/ConnectionIndicator';
 import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './RegisterPage';
@@ -41,7 +40,6 @@ function App() {
   if (!currentUser && isAuthPage) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <ConnectionIndicator />
         {window.location.pathname === '/login' ? <LoginPage /> : <RegisterPage />}
       </div>
     );
@@ -51,7 +49,6 @@ function App() {
   if (!currentUser && !isAuthPage) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <ConnectionIndicator />
         <LoginPage />
       </div>
     );
@@ -66,13 +63,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      <ConnectionIndicator />
-      
       {/* Connection Error Banner */}
       {connectionError && (
         <div className="fixed top-0 left-0 w-full z-40 bg-yellow-100 text-yellow-800 text-center py-2 px-4 border-b border-yellow-200">
           <span className="text-sm font-medium">{connectionError}</span>
-          <span className="text-xs ml-2">Reintentando automáticamente...</span>
         </div>
       )}
       
@@ -82,11 +76,11 @@ function App() {
           {/* Public routes */}
           <Route 
             path="/login" 
-            element={currentUser ? <Navigate to="/\" replace /> : <LoginPage />} 
+            element={currentUser ? <Navigate to="/" replace /> : <LoginPage />} 
           />
           <Route 
             path="/register" 
-            element={currentUser ? <Navigate to="/\" replace /> : <RegisterPage />} 
+            element={currentUser ? <Navigate to="/" replace /> : <RegisterPage />} 
           />
           
           {/* Protected routes */}
@@ -166,7 +160,7 @@ function App() {
           />
           
           {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/\" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>
